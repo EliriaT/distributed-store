@@ -1,0 +1,60 @@
+package main
+
+import (
+	"flag"
+	"github.com/BurntSushi/toml"
+	config "github.com/EliriaT/distributed-store/config"
+	"github.com/EliriaT/distributed-store/db"
+	"github.com/EliriaT/distributed-store/web"
+	"log"
+	"net/http"
+)
+
+var (
+	dbLocation = flag.String("db-location", "", "The path to the bolt db database")
+	httpAddr   = flag.String("http-addr", "127.0.0.1:8080", "HTTP host and port")
+	configFile = flag.String("config-file", "sharding.toml", "Config file for static sharding")
+	shard      = flag.String("shard", "", "The name of the shard to run")
+)
+
+func parseFlags() {
+	flag.Parse()
+
+	if *dbLocation == "" {
+		log.Fatalf("Must provide db-location")
+	}
+
+	if *shard == "" {
+		log.Fatalf("Must provide shard")
+	}
+}
+
+func main() {
+	parseFlags()
+
+	var shardConfig config.Config
+
+	if _, err := toml.DecodeFile(*configFile, &shardConfig); err != nil {
+		log.Fatalf("Error parsing config(%q): %v", *configFile, err)
+	}
+
+	shards, err := config.ParseShards(shardConfig.Shards, *shard)
+	if err != nil {
+		log.Fatalf("Error parsing shards config: %v", err)
+	}
+
+	log.Printf("Shard count is %d, current shard: %d", shards.Count, shards.CurrIdx)
+
+	db, close, err := db.NewDatabase(*dbLocation)
+	if err != nil {
+		log.Fatalf("Error creating %q: %v", *dbLocation, err)
+	}
+	defer close()
+
+	srv := web.NewServer(db, shards)
+
+	http.HandleFunc("/get", srv.GetHandler)
+	http.HandleFunc("/set", srv.SetHandler)
+
+	log.Fatal(http.ListenAndServe(*httpAddr, nil))
+}

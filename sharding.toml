@@ -1,0 +1,14 @@
+[[shards]]
+idx = 0
+name = "Chisinau"
+address = "localhost:8080"
+
+[[shards]]
+idx = 1
+name = "Balti"
+address = "localhost:8081"
+
+[[shards]]
+idx = 2
+name = "Orhei"
+address = "localhost:8082"
