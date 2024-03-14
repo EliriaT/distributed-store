@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/BurntSushi/toml"
 	"hash/fnv"
 )
 
@@ -24,6 +25,15 @@ type Shards struct {
 	Count   int
 	CurrIdx int
 	Addrs   map[int]string
+}
+
+// ParseFile parses the config and returns it upon success.
+func ParseFile(filename string) (Config, error) {
+	var c Config
+	if _, err := toml.DecodeFile(filename, &c); err != nil {
+		return Config{}, err
+	}
+	return c, nil
 }
 
 // ParseShards converts and verifies the list of shards
