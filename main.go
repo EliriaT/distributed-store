@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/BurntSushi/toml"
 	config "github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
 	"github.com/EliriaT/distributed-store/web"
@@ -32,9 +31,8 @@ func parseFlags() {
 func main() {
 	parseFlags()
 
-	var shardConfig config.Config
-
-	if _, err := toml.DecodeFile(*configFile, &shardConfig); err != nil {
+	shardConfig, err := config.ParseFile(*configFile)
+	if err != nil {
 		log.Fatalf("Error parsing config(%q): %v", *configFile, err)
 	}
 
