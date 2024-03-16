@@ -42,7 +42,7 @@ func (s *Server) GetHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	key := r.Form.Get("key")
 	keyShard := s.shards.Index(key)
-
+	//here it is different ,first get then redirect. But if its a replica, get should be first??. p.s. how to know it is a replica
 	if keyShard != s.shards.CurrIdx {
 		s.redirect(keyShard, w, r)
 		return
@@ -66,4 +66,11 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := s.db.SetKey(key, []byte(value))
 	fmt.Fprintf(w, "Shard = %d, current shard = %d, error = %v, \n", shard, s.shards.CurrIdx, err)
+}
+
+// DeleteExtraKeysHandler deletes keys that don't belong to the current shard.
+func (s *Server) DeleteExtraKeysHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Error = %v", s.db.DeleteExtraKeys(func(key string) bool {
+		return s.shards.Index(key) != s.shards.CurrIdx
+	}))
 }

@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -60,4 +59,35 @@ func (d *Database) GetKey(key string) ([]byte, error) {
 		return result, nil
 	}
 	return nil, err
+}
+
+// DeleteExtraKeys deletes the keys that do not belong to this shard.
+func (d *Database) DeleteExtraKeys(isExtra func(string) bool) error {
+	var keys []string
+
+	err := d.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(defaultBucket)
+		return b.ForEach(func(k, v []byte) error {
+			key := string(k)
+			if isExtra(key) {
+				keys = append(keys, key)
+			}
+			return nil
+		})
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return d.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(defaultBucket)
+
+		for _, k := range keys {
+			if err := b.Delete([]byte(k)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

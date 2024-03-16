@@ -12,3 +12,8 @@ address = "localhost:8081"
 idx = 2
 name = "Orhei"
 address = "localhost:8082"
+
+[[shards]]
+idx = 3
+name = "Cahul"
+address = "localhost:8083"
