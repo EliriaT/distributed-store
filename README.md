@@ -10,3 +10,6 @@ To run it:
 
 `curl http://127.0.0.1:8080/set?key=m&value=s`
 `curl http://127.0.0.1:8080/get?key=m`
+
+To run benchmarking:
+`go run main.go -iterations=1000 -concurrency=256 -read-iterations=1000`

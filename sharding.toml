@@ -1,19 +1,19 @@
 [[shards]]
 idx = 0
 name = "Chisinau"
-address = "localhost:8080"
+address = "127.0.0.2:8080"
 
 [[shards]]
 idx = 1
 name = "Balti"
-address = "localhost:8081"
+address = "127.0.0.3:8080"
 
 [[shards]]
 idx = 2
 name = "Orhei"
-address = "localhost:8082"
+address = "127.0.0.4:8080"
 
 [[shards]]
 idx = 3
 name = "Cahul"
-address = "localhost:8083"
+address = "127.0.0.5:8080"
