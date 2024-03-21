@@ -4,6 +4,7 @@ import (
 	"flag"
 	config "github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
+	"github.com/EliriaT/distributed-store/replication"
 	"github.com/EliriaT/distributed-store/web"
 	"log"
 	"net/http"
@@ -14,6 +15,7 @@ var (
 	httpAddr   = flag.String("http-addr", "127.0.0.1:8080", "HTTP host and port")
 	configFile = flag.String("config-file", "sharding.toml", "Config file for static sharding")
 	shard      = flag.String("shard", "", "The name of the shard to run")
+	replica    = flag.Bool("replica", false, "Whether or not run as a read-only replica")
 )
 
 func parseFlags() {
@@ -41,19 +43,30 @@ func main() {
 		log.Fatalf("Error parsing shards config: %v", err)
 	}
 
-	log.Printf("Shard count is %d, current shard: %d", shards.Count, shards.CurrIdx)
+	log.Printf("Shard count is %d, current shard: %d, isReplica: %t", shards.Count, shards.CurrIdx, *replica)
 
-	db, close, err := db.NewDatabase(*dbLocation)
+	db, close, err := db.NewDatabase(*dbLocation, *replica)
 	if err != nil {
 		log.Fatalf("Error creating %q: %v", *dbLocation, err)
 	}
 	defer close()
+
+	if *replica {
+		leaderAddrs, ok := shards.Addrs[shards.CurrIdx]
+		if !ok {
+			log.Fatalf("Could not find address for leader for shard %d")
+		}
+
+		go replication.ClientLoop(db, leaderAddrs)
+	}
 
 	srv := web.NewServer(db, shards)
 
 	http.HandleFunc("/get", srv.GetHandler)
 	http.HandleFunc("/set", srv.SetHandler)
 	http.HandleFunc("/purge", srv.DeleteExtraKeysHandler)
+	http.HandleFunc("/next-replication-key", srv.GetNextKeyForReplication)
+	http.HandleFunc("/delete-replication-key", srv.DeleteReplicationKey)
 
 	log.Fatal(http.ListenAndServe(*httpAddr, nil))
 }

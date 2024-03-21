@@ -1,9 +1,11 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
+	"github.com/EliriaT/distributed-store/replication"
 	"io"
 	"net/http"
 )
@@ -73,4 +75,32 @@ func (s *Server) DeleteExtraKeysHandler(w http.ResponseWriter, r *http.Request) 
 	fmt.Fprintf(w, "Error = %v", s.db.DeleteExtraKeys(func(key string) bool {
 		return s.shards.Index(key) != s.shards.CurrIdx
 	}))
+}
+
+// GetNextKeyForReplication returns the next key for replication.
+func (s *Server) GetNextKeyForReplication(w http.ResponseWriter, r *http.Request) {
+	enc := json.NewEncoder(w)
+	k, v, err := s.db.GetNextKeyForReplication()
+	enc.Encode(&replication.NextKeyValue{
+		Key:   string(k),
+		Value: string(v),
+		Err:   err,
+	})
+}
+
+// DeleteReplicationKey deletes the key from replica queue.
+func (s *Server) DeleteReplicationKey(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	key := r.Form.Get("key")
+	value := r.Form.Get("value")
+
+	err := s.db.DeleteReplicationKey([]byte(key), []byte(value))
+	if err != nil {
+		w.WriteHeader(http.StatusExpectationFailed)
+		fmt.Fprintf(w, "error: %v", err)
+		return
+	}
+
+	fmt.Fprintf(w, "ok")
 }
