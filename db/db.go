@@ -12,18 +12,17 @@ var replicaBucket = []byte("replication")
 
 // Database is a bolt database.
 type Database struct {
-	db       *bolt.DB
-	readOnly bool
+	db *bolt.DB
 }
 
 // NewDatabase returns an instance of a database.
-func NewDatabase(dbPath string, readOnly bool) (db *Database, closeFunc func() error, err error) {
+func NewDatabase(dbPath string) (db *Database, closeFunc func() error, err error) {
 	boltDb, err := bolt.Open(dbPath, 0600, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	db = &Database{db: boltDb, readOnly: readOnly}
+	db = &Database{db: boltDb}
 	closeFunc = boltDb.Close
 
 	if err := db.createBuckets(); err != nil {
@@ -49,10 +48,6 @@ func (d *Database) createBuckets() error {
 
 // SetKey sets the key to the requested value into the default database or returns an error.
 func (d *Database) SetKey(key string, value []byte) error {
-	if d.readOnly {
-		return errors.New("read-only mode")
-	}
-
 	return d.db.Update(func(tx *bolt.Tx) error {
 		if err := tx.Bucket(defaultBucket).Put([]byte(key), value); err != nil {
 			return err

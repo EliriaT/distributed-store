@@ -2,22 +2,21 @@
 idx = 0
 name = "Chisinau"
 address = "127.0.0.2:8080"
-replicas = ["127.0.0.22:8080"]
 
 [[shards]]
 idx = 1
 name = "Balti"
 address = "127.0.0.3:8080"
-replicas = ["127.0.0.33:8080"]
 
 [[shards]]
 idx = 2
 name = "Orhei"
 address = "127.0.0.4:8080"
-replicas = ["127.0.0.44:8080"]
 
 [[shards]]
 idx = 3
 name = "Cahul"
 address = "127.0.0.5:8080"
-replicas = ["127.0.0.55:8080"]
+
+replication_factor = 3
+consistency_level = 2
