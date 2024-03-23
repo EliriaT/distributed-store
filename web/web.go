@@ -56,6 +56,7 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 	value := r.Form.Get("value")
 	isCoordinator := r.Form.Get("coordinator")
 
+	// this method should be accessed only from the nodes itself. Should not be exposed publicly.
 	if strings.ToLower(isCoordinator) == "false" {
 		// the caesar will nevertheless guarantee an eventual consistency even if there are in unordered writes
 		err := s.db.SetKey(key, []byte(value))
@@ -79,6 +80,7 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 		if shard == s.shards.CurrIdx {
 			closure = func(shard int) {
 				fmt.Fprintf(w, "Replicated on current shard = %d, error = %v, \n", s.shards.CurrIdx, err)
+				// TODO Simulate here error
 				err = s.db.SetKey(key, []byte(value))
 			}
 		} else {
@@ -99,6 +101,10 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 
 	fmt.Fprintf(w, "Shards = %v, current shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
+}
+
+func replicateToNode(shard int) func(shard int) {
+
 }
 
 func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request) {
