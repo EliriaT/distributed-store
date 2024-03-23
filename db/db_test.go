@@ -19,7 +19,7 @@ func createTempDb(t *testing.T, readOnly bool) *db.Database {
 
 	t.Cleanup(func() { os.Remove(name) })
 
-	db, closeFunc, err := db.NewDatabase(name, readOnly)
+	db, closeFunc, err := db.NewDatabase(name)
 	if err != nil {
 		t.Fatalf("Could not create a new database: %v", err)
 	}
@@ -87,14 +87,6 @@ func TestDeleteReplicationKey(t *testing.T) {
 
 	if k != nil || v != nil {
 		t.Errorf(`GetNextKeyForReplication(): got %v, %v; want nil, nil`, k, v)
-	}
-}
-
-func TestSetReadOnly(t *testing.T) {
-	db := createTempDb(t, true)
-
-	if err := db.SetKey("utm", []byte("utm")); err == nil {
-		t.Fatalf("SetKey(%q, %q): got nil error, want non-nil error", "utm", []byte("utm"))
 	}
 }
 

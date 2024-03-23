@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"github.com/BurntSushi/toml"
-	"hash/fnv"
 )
 
 // Shard is a node with unique set of keys.
@@ -13,9 +12,23 @@ type Shard struct {
 	Address string
 }
 
+func (m Shard) String() string {
+	return m.Name
+}
+
 // Config describes the sharding config.
 type Config struct {
 	Shards []Shard
+}
+
+func (c Config) GetShardIndex(name string) int {
+	for _, shard := range c.Shards {
+		if shard.Name == name {
+			return shard.Idx
+		}
+	}
+
+	return 0
 }
 
 // Shards represents an easier-to-use representation of
@@ -70,11 +83,4 @@ func ParseShards(shards []Shard, currShardName string) (*Shards, error) {
 		Count:   shardCount,
 		CurrIdx: shardIdx,
 	}, nil
-}
-
-// Index returns the shard number for the corresponding key.
-func (s *Shards) Index(key string) int {
-	h := fnv.New64()
-	h.Write([]byte(key))
-	return int(h.Sum64() % uint64(s.Count))
 }

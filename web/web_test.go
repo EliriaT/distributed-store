@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
+	"github.com/EliriaT/distributed-store/db/sharding"
 	"github.com/EliriaT/distributed-store/web"
 	"io"
 	"log"
@@ -14,6 +15,32 @@ import (
 	"strings"
 	"testing"
 )
+
+func createConfig(t *testing.T, contents string) config.Config {
+	t.Helper()
+
+	f, err := os.CreateTemp(os.TempDir(), "config.toml")
+
+	if err != nil {
+		t.Fatalf("Couldn't create a temp file: %v", err)
+	}
+	defer f.Close()
+
+	name := f.Name()
+	defer os.Remove(name)
+
+	_, err = f.WriteString(contents)
+	if err != nil {
+		t.Fatalf("Could not write the config contents: %v", err)
+	}
+
+	config, err := config.ParseFile(name)
+	if err != nil {
+		t.Fatalf("Could not parse config: %v", err)
+	}
+
+	return config
+}
 
 func createShardDb(t *testing.T, idx int) *db.Database {
 	t.Helper()
@@ -28,7 +55,7 @@ func createShardDb(t *testing.T, idx int) *db.Database {
 	name := tmpFile.Name()
 	t.Cleanup(func() { os.Remove(name) })
 
-	db, closeFunc, err := db.NewDatabase(name, false)
+	db, closeFunc, err := db.NewDatabase(name)
 	if err != nil {
 		t.Fatalf("Could not create new database %q: %v", name, err)
 	}
@@ -42,13 +69,23 @@ func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.Databas
 
 	db := createShardDb(t, idx)
 
-	cfg := &config.Shards{
+	cfg := createConfig(t, `[[shards]]
+		idx = 0
+		name = "Orhei"
+		address = "localhost:8080"
+
+		[[shards]]
+		idx = 1
+		name = "Chisinau"
+		address = "localhost:8081"`)
+
+	shards := &config.Shards{
 		Addrs:   addrs,
 		Count:   len(addrs),
 		CurrIdx: idx,
 	}
 
-	s := web.NewServer(db, cfg)
+	s := web.NewServer(db, shards, sharding.NewConsistentHasher(cfg))
 	return db, s
 }
 
@@ -84,8 +121,8 @@ func TestWebServer(t *testing.T) {
 
 	// Calculated manually and depends on the sharding function.
 	keys := map[string]int{
-		"Orhei":    0,
-		"Chisinau": 1,
+		"Orhei":    1,
+		"Chisinau": 0,
 	}
 
 	ts1GetHandler = web1.GetHandler
@@ -121,23 +158,23 @@ func TestWebServer(t *testing.T) {
 		log.Printf("Contents of key %q: %s", key, contents)
 	}
 
-	value1, err := db1.GetKey("Orhei")
+	value1, err := db1.GetKey("Chisinau")
 	if err != nil {
-		t.Fatalf("USA key error: %v", err)
+		t.Fatalf("Chisinau key error: %v", err)
 	}
 
-	want1 := "value-Orhei"
+	want1 := "value-Chisinau"
 	if !bytes.Equal(value1, []byte(want1)) {
-		t.Errorf("Unexpected value of USA key: got %q, want %q", value1, want1)
+		t.Errorf("Unexpected value of Chisinau key: got %q, want %q", value1, want1)
 	}
 
-	value2, err := db2.GetKey("Chisinau")
+	value2, err := db2.GetKey("Orhei")
 	if err != nil {
-		t.Fatalf("Soviet key error: %v", err)
+		t.Fatalf("Orhei key error: %v", err)
 	}
 
-	want2 := "value-Chisinau"
+	want2 := "value-Orhei"
 	if !bytes.Equal(value2, []byte(want2)) {
-		t.Errorf("Unexpected value of Soviet key: got %q, want %q", value2, want2)
+		t.Errorf("Unexpected value of Orhei key: got %q, want %q", value2, want2)
 	}
 }

@@ -13,3 +13,6 @@ To run it:
 
 To run benchmarking:
 `go run main.go -iterations=1000 -concurrency=256 -read-iterations=1000`
+
+Run tests:
+`go test ./...`

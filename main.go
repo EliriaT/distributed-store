@@ -4,6 +4,7 @@ import (
 	"flag"
 	config "github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
+	"github.com/EliriaT/distributed-store/db/sharding"
 	"github.com/EliriaT/distributed-store/web"
 	"log"
 	"net/http"
@@ -41,7 +42,7 @@ func main() {
 		log.Fatalf("Error parsing shards config: %v", err)
 	}
 
-	log.Printf("Shard count is %d, current shard: %d, isReplica: %t", shards.Count, shards.CurrIdx)
+	log.Printf("Shard count is %d, current shard: %d", shards.Count, shards.CurrIdx)
 
 	db, close, err := db.NewDatabase(*dbLocation)
 	if err != nil {
@@ -49,7 +50,7 @@ func main() {
 	}
 	defer close()
 
-	srv := web.NewServer(db, shards)
+	srv := web.NewServer(db, shards, sharding.NewConsistentHasher(shardConfig))
 
 	http.HandleFunc("/get", srv.GetHandler)
 	http.HandleFunc("/set", srv.SetHandler)
