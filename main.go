@@ -55,8 +55,6 @@ func main() {
 	http.HandleFunc("/set", srv.SetHandler)
 	// TODO adjust purge to take into account n replicas
 	http.HandleFunc("/purge", srv.DeleteExtraKeysHandler)
-	http.HandleFunc("/next-replication-key", srv.GetNextKeyForReplication)
-	http.HandleFunc("/delete-replication-key", srv.DeleteReplicationKey)
 
 	log.Fatal(http.ListenAndServe(*httpAddr, nil))
 }

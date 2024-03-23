@@ -1,13 +1,11 @@
 package web
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
 	"github.com/EliriaT/distributed-store/db/sharding"
-	"github.com/EliriaT/distributed-store/replication"
-	"io"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -38,10 +36,12 @@ func NewServer(db *db.Database, shards *config.Shards, cfg config.Config) *Serve
 func (s *Server) GetHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	key := r.Form.Get("key")
+
 	keyShard := s.sharder.Index(key)
+	errCh := make(chan error)
 	//here it is different ,first get then redirect. But if its a replica, get should be first??. p.s. how to know it is a replica
 	if keyShard != s.shards.CurrIdx {
-		s.redirect(keyShard, w, r)
+		s.redirect(keyShard, w, r, errCh)
 		return
 	}
 
@@ -60,66 +60,75 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.ToLower(isCoordinator) == "false" {
 		// the caesar will nevertheless guarantee an eventual consistency even if there are in unordered writes
 		err := s.db.SetKey(key, []byte(value))
-		fmt.Fprintf(w, "Replicated on current shard = %d, error = %v, \n", s.shards.CurrIdx, err)
+		log.Printf("Replicated on current shard = %d, error = %v, \n", s.shards.CurrIdx, err)
 		return
 	}
 
 	shards, err := s.sharder.GetNReplicas(key, s.replicationFactor)
 	if err != nil {
-		fmt.Fprintf(w, "Shards = %v, current shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
+		log.Printf("Shards = %v, current shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
 		return
 	}
 
 	var wg sync.WaitGroup
-
 	wg.Add(s.consistencyLevel)
+	errCh := make(chan error)
 
 	for i, shard := range shards {
-		var closure func(shard int)
+		var closure func(shard int, errCh chan<- error)
 
 		if shard == s.shards.CurrIdx {
-			closure = func(shard int) {
-				fmt.Fprintf(w, "Replicated on current shard = %d, error = %v, \n", s.shards.CurrIdx, err)
+			closure = func(shard int, errCh chan<- error) {
+				log.Printf("Replicated on current shard = %d, error = %v, \n", s.shards.CurrIdx, err)
 				// TODO Simulate here error
 				err = s.db.SetKey(key, []byte(value))
+				if err != nil {
+					errCh <- err
+				}
 			}
 		} else {
-			closure = func(shard int) {
-				s.redirect(shard, w, r)
+			closure = func(shard int, errCh chan<- error) {
+				s.redirect(shard, w, r, errCh)
 			}
 		}
 
-		if i < s.consistencyLevel {
-			go func(shard int) {
-				closure(shard)
+		if i < s.consistencyLevel { // aici tot posibil race condition??
+			go func(shard int, errCh chan<- error) {
+				closure(shard, errCh)
 				defer wg.Done()
-			}(shard)
+			}(shard, errCh)
 		} else {
-			go closure(shard)
+			go closure(shard, errCh)
 		}
 	}
 	wg.Wait()
 
 	fmt.Fprintf(w, "Shards = %v, current shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
+	log.Println("\n\n\n\n-------------------------\n\n\n\n")
 }
 
-func replicateToNode(shard int) func(shard int) {
-
-}
-
-func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request) {
+func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request, errCh chan<- error) {
 	url := "http://" + s.shards.Addrs[shardIndx] + r.RequestURI + "&coordinator=false"
-	fmt.Fprintf(w, "redirecting from shard %d to shard %d (%q)\n", s.shards.CurrIdx, shardIndx, url)
+	//log.Printf("redirecting from shard %d to shard %d (%q)\n", s.shards.CurrIdx, shardIndx, url)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprintf(w, "Error redirecting the request: %v \n", err)
+		log.Printf("Error on node %d redirecting the request: %v \n", s.shards.CurrIdx, err)
+		errCh <- err
 		return
 	}
 	defer resp.Body.Close()
 
-	io.Copy(w, resp.Body)
+	//log.Println(w)
+	//log.Println(resp.Body)
+	//io.Copy(w, resp.Body)
+	//buf := make([]byte, 8)
+	//if _, err := io.CopyBuffer(w, resp.Body, buf); err != nil {
+	//	// handle the error
+	//	log.Println(err)
+	//	return
+	//}
+	//fmt.Fprintf(w, "%s", resp.Body)
 }
 
 // DeleteExtraKeysHandler deletes keys that don't belong to the current shard.
@@ -127,32 +136,4 @@ func (s *Server) DeleteExtraKeysHandler(w http.ResponseWriter, r *http.Request) 
 	fmt.Fprintf(w, "Error = %v\n", s.db.DeleteExtraKeys(func(key string) bool {
 		return s.sharder.Index(key) != s.shards.CurrIdx
 	}))
-}
-
-// GetNextKeyForReplication returns the next key for replication.
-func (s *Server) GetNextKeyForReplication(w http.ResponseWriter, r *http.Request) {
-	enc := json.NewEncoder(w)
-	k, v, err := s.db.GetNextKeyForReplication()
-	enc.Encode(&replication.NextKeyValue{
-		Key:   string(k),
-		Value: string(v),
-		Err:   err,
-	})
-}
-
-// DeleteReplicationKey deletes the key from replica queue.
-func (s *Server) DeleteReplicationKey(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-
-	key := r.Form.Get("key")
-	value := r.Form.Get("value")
-
-	err := s.db.DeleteReplicationKey([]byte(key), []byte(value))
-	if err != nil {
-		w.WriteHeader(http.StatusExpectationFailed)
-		fmt.Fprintf(w, "error: %v", err)
-		return
-	}
-
-	fmt.Fprintf(w, "ok")
 }
