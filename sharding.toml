@@ -1,3 +1,6 @@
+replication_factor = 4
+consistency_level = 1
+
 [[shards]]
 idx = 0
 name = "Chisinau"
@@ -17,6 +20,3 @@ address = "127.0.0.4:8080"
 idx = 3
 name = "Cahul"
 address = "127.0.0.5:8080"
-
-replication_factor = 3
-consistency_level = 2

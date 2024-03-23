@@ -18,7 +18,9 @@ func (m Shard) String() string {
 
 // Config describes the sharding config.
 type Config struct {
-	Shards []Shard
+	Shards            []Shard
+	ReplicationFactor int `toml:"replication_factor"`
+	ConsistencyLevel  int `toml:"consistency_level"`
 }
 
 func (c Config) GetShardIndex(name string) int {
@@ -40,13 +42,38 @@ type Shards struct {
 	Addrs   map[int]string
 }
 
-// ParseFile parses the config and returns it upon success.
+// ParseFile parses the config, validates it and returns it upon success.
 func ParseFile(filename string) (Config, error) {
 	var c Config
 	if _, err := toml.DecodeFile(filename, &c); err != nil {
 		return Config{}, err
 	}
-	return c, nil
+
+	err := validateConfiguration(c)
+
+	return c, err
+}
+
+func validateConfiguration(config Config) error {
+	shardsCount := len(config.Shards)
+	if config.ReplicationFactor > shardsCount {
+		return fmt.Errorf("replication factor, %d, cannot be greater than the number of shards %d", config.ReplicationFactor, shardsCount)
+	}
+
+	if config.ConsistencyLevel > config.ReplicationFactor {
+		return fmt.Errorf("consistency level, %d, cannot be greater than the replication factor %d", config.ConsistencyLevel, config.ReplicationFactor)
+	}
+
+	if config.ReplicationFactor < 1 {
+		return fmt.Errorf("replication factor, %d, cannot be smaller than 1", config.ReplicationFactor)
+
+	}
+
+	if config.ConsistencyLevel < 1 {
+		return fmt.Errorf("consistency level, %d, cannot be smaller than 1", config.ReplicationFactor)
+	}
+
+	return nil
 }
 
 // ParseShards converts and verifies the list of shards

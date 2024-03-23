@@ -4,7 +4,6 @@ import (
 	"flag"
 	config "github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
-	"github.com/EliriaT/distributed-store/db/sharding"
 	"github.com/EliriaT/distributed-store/web"
 	"log"
 	"net/http"
@@ -50,10 +49,11 @@ func main() {
 	}
 	defer close()
 
-	srv := web.NewServer(db, shards, sharding.NewConsistentHasher(shardConfig))
+	srv := web.NewServer(db, shards, shardConfig)
 
 	http.HandleFunc("/get", srv.GetHandler)
 	http.HandleFunc("/set", srv.SetHandler)
+	// TODO adjust purge to take into account n replicas
 	http.HandleFunc("/purge", srv.DeleteExtraKeysHandler)
 	http.HandleFunc("/next-replication-key", srv.GetNextKeyForReplication)
 	http.HandleFunc("/delete-replication-key", srv.DeleteReplicationKey)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
-	"github.com/EliriaT/distributed-store/db/sharding"
 	"github.com/EliriaT/distributed-store/web"
 	"io"
 	"log"
@@ -69,7 +68,10 @@ func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.Databas
 
 	db := createShardDb(t, idx)
 
-	cfg := createConfig(t, `[[shards]]
+	cfg := createConfig(t, `
+		replication_factor = 1
+		consistency_level = 1
+		[[shards]]
 		idx = 0
 		name = "Orhei"
 		address = "localhost:8080"
@@ -85,7 +87,7 @@ func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.Databas
 		CurrIdx: idx,
 	}
 
-	s := web.NewServer(db, shards, sharding.NewConsistentHasher(cfg))
+	s := web.NewServer(db, shards, cfg)
 	return db, s
 }
 
