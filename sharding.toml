@@ -1,4 +1,4 @@
-replication_factor = 4
+replication_factor = 2
 consistency_level = 1
 
 [[shards]]

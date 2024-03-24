@@ -5,6 +5,8 @@ import (
 	"github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
 	"github.com/EliriaT/distributed-store/db/sharding"
+	"golang.org/x/exp/slices"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -32,21 +34,55 @@ func NewServer(db *db.Database, shards *config.Shards, cfg config.Config) *Serve
 }
 
 // GetHandler handles read requests from the database.
-// TODO GET FROM REPLICA WITHOUT REDIRECT
 func (s *Server) GetHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	key := r.Form.Get("key")
+	isCoordinator := r.Form.Get("coordinator")
 
-	keyShard := s.sharder.Index(key)
-	errCh := make(chan error)
-	//here it is different ,first get then redirect. But if its a replica, get should be first??. p.s. how to know it is a replica
-	if keyShard != s.shards.CurrIdx {
-		s.redirect(keyShard, w, r, errCh)
+	if strings.ToLower(isCoordinator) == "false" {
+		value, err := s.db.GetKey(key)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, fmt.Sprintf("%s:%s", key, string(value)))
+
 		return
 	}
 
-	value, err := s.db.GetKey(key)
-	fmt.Fprintf(w, "Shard = %d, current shard = %d, current addr = %q, Value = %q, error = %v \n", keyShard, s.shards.CurrIdx, s.shards.Addrs[keyShard], value, err)
+	shards, err := s.sharder.GetNReplicas(key, s.replicationFactor)
+	if err != nil {
+		log.Printf("Shards = %v, current shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
+		return
+	}
+
+	var value []byte
+	var replica int
+	var response string
+
+	if slices.Contains(shards, s.shards.CurrIdx) {
+		replica = s.shards.CurrIdx
+		value, err = s.db.GetKey(key)
+		if err == nil {
+			fmt.Fprintf(w, "Shard = %d, current shard = %d, current addr = %q, Value = %q, error = %v \n", replica, s.shards.CurrIdx, s.shards.Addrs[s.shards.CurrIdx], value, err)
+			return
+		}
+	} else {
+		for _, shard := range shards {
+			replica = shard
+			response, err = s.redirect(replica, w, r)
+			if err != nil {
+				continue
+			}
+			parts := strings.Split(response, ":")
+			value = []byte(parts[1])
+			break
+
+		}
+	}
+
+	fmt.Fprintf(w, "Shard = %d, current shard = %d, current addr = %q, Value = %q, error = %v \n", replica, s.shards.CurrIdx, s.shards.Addrs[s.shards.CurrIdx], value, err)
 }
 
 // SetHandler handles write requests from the database.
@@ -61,6 +97,11 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 		// the caesar will nevertheless guarantee an eventual consistency even if there are in unordered writes
 		err := s.db.SetKey(key, []byte(value))
 		log.Printf("Replicated on current shard = %d, error = %v, \n", s.shards.CurrIdx, err)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
@@ -72,7 +113,7 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 
 	var wg sync.WaitGroup
 	wg.Add(s.consistencyLevel)
-	errCh := make(chan error)
+	errCh := make(chan error, s.replicationFactor)
 
 	for i, shard := range shards {
 		var closure func(shard int, errCh chan<- error)
@@ -80,7 +121,7 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 		if shard == s.shards.CurrIdx {
 			closure = func(shard int, errCh chan<- error) {
 				log.Printf("Replicated on current shard = %d, error = %v, \n", s.shards.CurrIdx, err)
-				// TODO Simulate here error
+
 				err = s.db.SetKey(key, []byte(value))
 				if err != nil {
 					errCh <- err
@@ -88,11 +129,14 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			closure = func(shard int, errCh chan<- error) {
-				s.redirect(shard, w, r, errCh)
+				_, err = s.redirect(shard, w, r)
+				if err != nil {
+					errCh <- err
+				}
 			}
 		}
-
-		if i < s.consistencyLevel { // aici tot posibil race condition??
+		// consistency level ar trebuie sa se mareasca doar la primirea de raspuns cu success. refactor with channels and for loop
+		if i < s.consistencyLevel {
 			go func(shard int, errCh chan<- error) {
 				closure(shard, errCh)
 				defer wg.Done()
@@ -101,23 +145,41 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 			go closure(shard, errCh)
 		}
 	}
+
 	wg.Wait()
 
-	fmt.Fprintf(w, "Shards = %v, current shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
+	select {
+	case err = <-errCh:
+		fmt.Fprintf(w, "Shards = %v, current shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
+	default:
+		fmt.Fprintf(w, "Shards = %v, current shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
+
+	}
+
 	log.Println("\n\n\n\n-------------------------\n\n\n\n")
 }
 
-func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request, errCh chan<- error) {
+func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request) (string, error) {
 	url := "http://" + s.shards.Addrs[shardIndx] + r.RequestURI + "&coordinator=false"
-	//log.Printf("redirecting from shard %d to shard %d (%q)\n", s.shards.CurrIdx, shardIndx, url)
 
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Printf("Error on node %d redirecting the request: %v \n", s.shards.CurrIdx, err)
-		errCh <- err
-		return
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("could not receive a success response on redirect")
 	}
 	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return "", err
+	}
+
+	return string(body), nil
 
 	//log.Println(w)
 	//log.Println(resp.Body)
