@@ -187,7 +187,7 @@ outerLoop:
 
 	fmt.Fprintf(w, "CL = %d, RF= %d, Replicated successfully on shards = %v, coordinator shard = %d, error = %v, \n", s.consistencyLevel, s.replicationFactor, shards, s.shards.CurrIdx, err)
 
-	log.Println("\n\n-------------------------\n\n")
+	log.Println("\n-------------------------")
 }
 
 func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request) (string, error) {

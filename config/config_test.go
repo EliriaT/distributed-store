@@ -25,21 +25,25 @@ func createConfig(t *testing.T, contents string) config.Config {
 		t.Fatalf("Could not write the config contents: %v", err)
 	}
 
-	config, err := config.ParseFile(name)
+	configuration, err := config.ParseFile(name)
 	if err != nil {
 		t.Fatalf("Could not parse config: %v", err)
 	}
 
-	return config
+	return configuration
 }
 
 func TestConfigParse(t *testing.T) {
-	got := createConfig(t, `[[shards]]
+	got := createConfig(t, `replication_factor = 1
+		consistency_level = 1
+		[[shards]]
 		name = "Orhei"
 		idx = 0
 		address = "localhost:8080"`)
 
 	want := config.Config{
+		ReplicationFactor: 1,
+		ConsistencyLevel:  1,
 		Shards: []config.Shard{
 			{
 				Name:    "Orhei",
@@ -55,7 +59,8 @@ func TestConfigParse(t *testing.T) {
 }
 
 func TestParseShards(t *testing.T) {
-	c := createConfig(t, `
+	c := createConfig(t, `replication_factor = 2
+	consistency_level = 1
 	[[shards]]
 		name = "Orhei"
 		idx = 0

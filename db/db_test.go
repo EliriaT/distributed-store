@@ -45,49 +45,6 @@ func TestGetSet(t *testing.T) {
 	if !bytes.Equal(receivedValue, []byte(value)) {
 		t.Errorf(`Unexpected value for key "utm": got %q, want %q`, value, key)
 	}
-
-	k, v, err := db.GetNextKeyForReplication()
-	if err != nil {
-		t.Fatalf(`Unexpected error for GetNextKeyForReplication(): %v`, err)
-	}
-
-	if !bytes.Equal(k, []byte(key)) || !bytes.Equal(v, []byte(value)) {
-		t.Errorf(`GetNextKeyForReplication(): got %q, %q; want %q, %q`, k, v, key, value)
-	}
-}
-
-func TestDeleteReplicationKey(t *testing.T) {
-	db := createTempDb(t, false)
-
-	key := "utm"
-	value := "md"
-	setKey(t, db, key, value)
-
-	k, v, err := db.GetNextKeyForReplication()
-	if err != nil {
-		t.Fatalf(`Unexpected error for GetNextKeyForReplication(): %v`, err)
-	}
-
-	if !bytes.Equal(k, []byte(key)) || !bytes.Equal(v, []byte(value)) {
-		t.Errorf(`GetNextKeyForReplication(): got %q, %q; want %q, %q`, k, v, key, value)
-	}
-
-	if err := db.DeleteReplicationKey([]byte(key), []byte("wrong value")); err == nil {
-		t.Fatalf(`DeleteReplicationKey("utm", "md"): got nil error, want non-nil error`)
-	}
-
-	if err := db.DeleteReplicationKey([]byte(key), []byte(value)); err != nil {
-		t.Fatalf(`DeleteReplicationKey("utm", "Great"): got %q, want nil error`, err)
-	}
-
-	k, v, err = db.GetNextKeyForReplication()
-	if err != nil {
-		t.Fatalf(`Unexpected error for GetNextKeyForReplication(): %v`, err)
-	}
-
-	if k != nil || v != nil {
-		t.Errorf(`GetNextKeyForReplication(): got %v, %v; want nil, nil`, k, v)
-	}
 }
 
 func setKey(t *testing.T, d *db.BoltDatabase, key, value string) {
