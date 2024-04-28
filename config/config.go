@@ -5,7 +5,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// Shard is a node with unique set of keys.
+// Shard is a node responsible for a set of keys.
 type Shard struct {
 	Idx     int
 	Name    string

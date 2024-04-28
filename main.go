@@ -43,13 +43,13 @@ func main() {
 
 	log.Printf("Shard count is %d, current shard: %d", shards.Count, shards.CurrIdx)
 
-	db, close, err := db.NewDatabase(*dbLocation)
+	database, closeFunc, err := db.NewBoltDatabase(*dbLocation)
 	if err != nil {
 		log.Fatalf("Error creating %q: %v", *dbLocation, err)
 	}
-	defer close()
+	defer closeFunc()
 
-	srv := web.NewServer(db, shards, shardConfig)
+	srv := web.NewServer(database, shards, shardConfig)
 
 	http.HandleFunc("/get", srv.GetHandler)
 	http.HandleFunc("/set", srv.SetHandler)

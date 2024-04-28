@@ -41,7 +41,7 @@ func createConfig(t *testing.T, contents string) config.Config {
 	return config
 }
 
-func createShardDb(t *testing.T, idx int) *db.Database {
+func createShardDb(t *testing.T, idx int) *db.BoltDatabase {
 	t.Helper()
 
 	tmpFile, err := os.CreateTemp(os.TempDir(), fmt.Sprintf("db%d", idx))
@@ -54,7 +54,7 @@ func createShardDb(t *testing.T, idx int) *db.Database {
 	name := tmpFile.Name()
 	t.Cleanup(func() { os.Remove(name) })
 
-	db, closeFunc, err := db.NewDatabase(name)
+	db, closeFunc, err := db.NewBoltDatabase(name)
 	if err != nil {
 		t.Fatalf("Could not create new database %q: %v", name, err)
 	}
@@ -63,7 +63,7 @@ func createShardDb(t *testing.T, idx int) *db.Database {
 	return db
 }
 
-func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.Database, *web.Server) {
+func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.BoltDatabase, *web.Server) {
 	t.Helper()
 
 	db := createShardDb(t, idx)

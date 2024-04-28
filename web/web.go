@@ -11,12 +11,11 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 )
 
 // Server contains HTTP method handlers to be used for the database.
 type Server struct {
-	db                *db.Database
+	db                db.Database
 	shards            *config.Shards
 	sharder           sharding.Sharder
 	replicationFactor int
@@ -24,7 +23,7 @@ type Server struct {
 }
 
 // NewServer creates a new instance with HTTP handlers to be used to get and set values.
-func NewServer(db *db.Database, shards *config.Shards, cfg config.Config) *Server {
+func NewServer(db db.Database, shards *config.Shards, cfg config.Config) *Server {
 	return &Server{
 		db:                db,
 		shards:            shards,
@@ -34,7 +33,7 @@ func NewServer(db *db.Database, shards *config.Shards, cfg config.Config) *Serve
 	}
 }
 
-// GetHandler handles read requests from the database.
+// GetHandler handles read requests to the distributed database.
 func (s *Server) GetHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	key := r.Form.Get("key")
@@ -65,28 +64,30 @@ func (s *Server) GetHandler(w http.ResponseWriter, r *http.Request) {
 	if slices.Contains(shards, s.shards.CurrIdx) {
 		replica = s.shards.CurrIdx
 		value, err = s.db.GetKey(key)
+
 		if err == nil {
-			fmt.Fprintf(w, "Replica = %d, coordinator shard = %d, current addr = %q, Value = %q, error = %v \n", replica, s.shards.CurrIdx, s.shards.Addrs[s.shards.CurrIdx], value, err)
+			log.Printf("Get processed on coordinator node %d, key = %s, value = %s", s.shards.CurrIdx, key, value)
+			fmt.Fprintf(w, "Replica shard = %d, coordinator shard = %d, current addr = %q, Value = %q, error = %v \n", replica, s.shards.CurrIdx, s.shards.Addrs[s.shards.CurrIdx], value, err)
 			return
 		}
-	} else {
-		for _, shard := range shards {
-			replica = shard
-			response, err = s.redirect(replica, w, r)
-			if err != nil {
-				continue
-			}
-			parts := strings.Split(response, ":")
-			value = []byte(parts[1])
-			break
+	}
 
+	for _, shard := range shards {
+		replica = shard
+		response, err = s.redirect(replica, w, r)
+		if err != nil {
+			continue
 		}
+		parts := strings.Split(response, ":")
+		value = []byte(parts[1])
+		log.Printf("Get processed on shard node %d, key = %s, value = %s", replica, key, value)
+		break
 	}
 
 	fmt.Fprintf(w, "Replica shard = %d, coordinator shard = %d, current addr = %q, Value = %q, error = %v \n", replica, s.shards.CurrIdx, s.shards.Addrs[s.shards.CurrIdx], value, err)
 }
 
-// SetHandler handles write requests from the database.
+// SetHandler handles write requests to the distributed database.
 func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	key := r.Form.Get("key")
@@ -97,7 +98,7 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.ToLower(isCoordinator) == "false" {
 		// the caesar will nevertheless guarantee an eventual consistency even if there are in unordered writes
 		err := s.db.SetKey(key, []byte(value))
-		log.Printf("Replicated on current shard = %d, error = %v, \n", s.shards.CurrIdx, err)
+		log.Printf("Replicated on replica shard = %d, key = %s, value = %s, error = %v, \n", s.shards.CurrIdx, key, value, err)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -117,16 +118,19 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 	errCh := make(chan error, s.replicationFactor)
 	successCh := make(chan int, s.replicationFactor)
 	successCounter := 0
+	errorCounter := 0
 
 	for i, shard := range shards {
 		var closure func(shard int, errCh chan<- error)
 
 		if shard == s.shards.CurrIdx {
+			// why we send errCh as fun arg ?
 			closure = func(shard int, errCh chan<- error) {
-				log.Printf("Replicated on current shard = %d, error = %v, \n", s.shards.CurrIdx, err)
+				log.Printf("Replicated on coordinator replica shard = %d, key = %s, value = %s, error = %v, \n", s.shards.CurrIdx, key, value, err)
 
 				err = s.db.SetKey(key, []byte(value))
 				if err != nil {
+					log.Printf("Failed to replicate key = %s, value = %s on shard %d, error = %v", key, value, shard, err)
 					errCh <- err
 					return
 				}
@@ -136,13 +140,14 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 			closure = func(shard int, errCh chan<- error) {
 				_, err = s.redirect(shard, w, r)
 				if err != nil {
+					log.Printf("Failed to replicate key = %s, value = %s on shard %d, error = %v", key, value, shard, err)
 					errCh <- err
 					return
 				}
 				successCh <- shard
 			}
 		}
-		// consistency level ar trebuie sa se mareasca doar la primirea de raspuns cu success. refactor with channels and for loop
+
 		if i < s.consistencyLevel {
 			go func(shard int, errCh chan<- error) {
 				closure(shard, errCh)
@@ -154,7 +159,6 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wg.Wait()
-	timeout := time.After(800 * time.Millisecond)
 
 	shards = make([]int, 0)
 
@@ -167,20 +171,23 @@ outerLoop:
 			if successCounter == s.consistencyLevel {
 				break outerLoop
 			}
-		case <-timeout:
-			break outerLoop
+
+			// if s.replicationFactor responses arrive, then the wait is stopped.
+			if errorCounter+successCounter >= s.replicationFactor {
+				break outerLoop
+			}
+		default:
+			<-errCh
+			errorCounter++
+			if errorCounter+successCounter >= s.replicationFactor {
+				break outerLoop
+			}
 		}
 	}
 
-	select {
-	case err = <-errCh:
-		fmt.Fprintf(w, "Replicated shards = %v, coordinator shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
-	default:
-		fmt.Fprintf(w, "Replicated shards = %v, coordinator shard = %d, error = %v, \n", shards, s.shards.CurrIdx, err)
+	fmt.Fprintf(w, "CL = %d, RF= %d, Replicated successfully on shards = %v, coordinator shard = %d, error = %v, \n", s.consistencyLevel, s.replicationFactor, shards, s.shards.CurrIdx, err)
 
-	}
-
-	log.Println("\n\n\n\n-------------------------\n\n\n\n")
+	log.Println("\n\n-------------------------\n\n")
 }
 
 func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request) (string, error) {
@@ -188,7 +195,7 @@ func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("Error on node %d redirecting the request: %v \n", s.shards.CurrIdx, err)
+		log.Printf("Error on node %d when redirecting the request: %v \n", s.shards.CurrIdx, err)
 		return "", err
 	}
 
@@ -204,17 +211,6 @@ func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request)
 	}
 
 	return string(body), nil
-
-	//log.Println(w)
-	//log.Println(resp.Body)
-	//io.Copy(w, resp.Body)
-	//buf := make([]byte, 8)
-	//if _, err := io.CopyBuffer(w, resp.Body, buf); err != nil {
-	//	// handle the error
-	//	log.Println(err)
-	//	return
-	//}
-	//fmt.Fprintf(w, "%s", resp.Body)
 }
 
 // DeleteExtraKeysHandler deletes keys that don't belong to the current shard.

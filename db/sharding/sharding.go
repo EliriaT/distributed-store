@@ -24,10 +24,10 @@ func (c ConsistentHasher) Index(key string) int {
 // GetNReplicas gets n replicas for a given key, one of which is the key owner.
 func (c ConsistentHasher) GetNReplicas(key string, count int) ([]int, error) {
 	members, err := c.ring.GetClosestN([]byte(key), count)
-
 	if err != nil {
 		return nil, err
 	}
+
 	membersIndexes := make([]int, len(members), len(members))
 
 	for i, member := range members {

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func createTempDb(t *testing.T, readOnly bool) *db.Database {
+func createTempDb(t *testing.T, readOnly bool) *db.BoltDatabase {
 	t.Helper()
 
 	f, err := os.CreateTemp(os.TempDir(), "kvdb")
@@ -19,7 +19,7 @@ func createTempDb(t *testing.T, readOnly bool) *db.Database {
 
 	t.Cleanup(func() { os.Remove(name) })
 
-	db, closeFunc, err := db.NewDatabase(name)
+	db, closeFunc, err := db.NewBoltDatabase(name)
 	if err != nil {
 		t.Fatalf("Could not create a new database: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestDeleteReplicationKey(t *testing.T) {
 	}
 }
 
-func setKey(t *testing.T, d *db.Database, key, value string) {
+func setKey(t *testing.T, d *db.BoltDatabase, key, value string) {
 	t.Helper()
 
 	if err := d.SetKey(key, []byte(value)); err != nil {
@@ -98,7 +98,7 @@ func setKey(t *testing.T, d *db.Database, key, value string) {
 	}
 }
 
-func getKey(t *testing.T, d *db.Database, key string) string {
+func getKey(t *testing.T, d *db.BoltDatabase, key string) string {
 	t.Helper()
 
 	value, err := d.GetKey(key)
