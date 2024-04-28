@@ -5,6 +5,9 @@ import (
 	"github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
 	"github.com/EliriaT/distributed-store/db/sharding"
+	"github.com/EliriaT/distributed-store/replication"
+	"github.com/gookit/slog"
+	"github.com/madalv/conalg/caesar"
 	"golang.org/x/exp/slices"
 	"io"
 	"log"
@@ -18,18 +21,24 @@ type Server struct {
 	db                db.Database
 	shards            *config.Shards
 	sharder           sharding.Sharder
+	replicator        replication.OrderedReplicator
 	replicationFactor int
 	consistencyLevel  int
 }
 
 // NewServer creates a new instance with HTTP handlers to be used to get and set values.
-func NewServer(db db.Database, shards *config.Shards, cfg config.Config) *Server {
+func NewServer(db db.Database, shards *config.Shards, cfg config.Config, envPath string) *Server {
+	replicator := replication.NewOrderedReplicator(db, shards, cfg)
+	conalg := caesar.InitConalgModule(&replicator, envPath, slog.InfoLevel, true)
+	replicator.SetConalgModule(conalg)
+
 	return &Server{
 		db:                db,
 		shards:            shards,
 		sharder:           sharding.NewConsistentHasher(cfg),
 		replicationFactor: cfg.ReplicationFactor,
 		consistencyLevel:  cfg.ConsistencyLevel,
+		replicator:        replicator,
 	}
 }
 
@@ -94,9 +103,10 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 	value := r.Form.Get("value")
 	isCoordinator := r.Form.Get("coordinator")
 
+	s.replicator.Replicate(key, value)
+
 	// this method should be accessed only from the nodes itself. Should not be exposed publicly.
 	if strings.ToLower(isCoordinator) == "false" {
-		// the caesar will nevertheless guarantee an eventual consistency even if there are in unordered writes
 		err := s.db.SetKey(key, []byte(value))
 		log.Printf("Replicated on replica shard = %d, key = %s, value = %s, error = %v, \n", s.shards.CurrIdx, key, value, err)
 		if err != nil {

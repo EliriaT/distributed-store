@@ -14,6 +14,7 @@ var (
 	httpAddr   = flag.String("http-addr", "127.0.0.1:8080", "HTTP host and port")
 	configFile = flag.String("config-file", "sharding.toml", "Config file for static sharding")
 	shard      = flag.String("shard", "", "The name of the shard to run")
+	env        = flag.String("env", "", "The path to env file for the consensus module")
 )
 
 func parseFlags() {
@@ -49,7 +50,7 @@ func main() {
 	}
 	defer closeFunc()
 
-	srv := web.NewServer(database, shards, shardConfig)
+	srv := web.NewServer(database, shards, shardConfig, *env)
 
 	http.HandleFunc("/get", srv.GetHandler)
 	http.HandleFunc("/set", srv.SetHandler)
