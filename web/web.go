@@ -29,7 +29,7 @@ type Server struct {
 // NewServer creates a new instance with HTTP handlers to be used to get and set values.
 func NewServer(db db.Database, shards *config.Shards, cfg config.Config, envPath string) *Server {
 	replicator := replication.NewOrderedReplicator(db, shards, cfg)
-	conalg := caesar.InitConalgModule(&replicator, envPath, slog.InfoLevel, true)
+	conalg := caesar.InitConalgModule(&replicator, envPath, slog.FatalLevel, false)
 	replicator.SetConalgModule(conalg)
 
 	return &Server{
@@ -103,8 +103,6 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 	value := r.Form.Get("value")
 	isCoordinator := r.Form.Get("coordinator")
 
-	s.replicator.Replicate(key, value)
-
 	// this method should be accessed only from the nodes itself. Should not be exposed publicly.
 	if strings.ToLower(isCoordinator) == "false" {
 		err := s.db.SetKey(key, []byte(value))
@@ -116,6 +114,9 @@ func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+
+	// Add to the order replicator the set command
+	s.replicator.Replicate(key, value)
 
 	shards, err := s.sharder.GetNReplicas(key, s.replicationFactor)
 	if err != nil {

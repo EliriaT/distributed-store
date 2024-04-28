@@ -103,3 +103,17 @@ func (d *BadgerDatabase) DeleteExtraKeys(isExtra func(string) bool) error {
 		return nil
 	})
 }
+
+func (d *BadgerDatabase) WriteInBatch(setCommands []SetCommand) error {
+	wb := d.db.NewWriteBatch()
+	defer wb.Cancel()
+
+	for _, command := range setCommands {
+		err := wb.Set([]byte(command.Key), []byte(command.Value))
+		if err != nil {
+			return err
+		}
+	}
+
+	return wb.Flush()
+}
