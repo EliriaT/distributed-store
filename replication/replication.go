@@ -80,7 +80,7 @@ func (s *OrderedReplicator) Replicate(key string, value string) {
 }
 
 func NewOrderedReplicator(datastore db.Database, shards *config.Shards, cfg config.Config) OrderedReplicator {
-	batchSize := 3
+	batchSize := 100
 	return OrderedReplicator{
 		db:                datastore,
 		shards:            shards,
