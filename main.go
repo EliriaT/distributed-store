@@ -43,7 +43,7 @@ func main() {
 
 	log.Printf("Shard count is %d, current shard: %d", shards.Count, shards.CurrIdx)
 
-	database, closeFunc, err := db.NewBoltDatabase(*dbLocation)
+	database, closeFunc, err := db.NewBadgerDatabase(*dbLocation)
 	if err != nil {
 		log.Fatalf("Error creating %q: %v", *dbLocation, err)
 	}

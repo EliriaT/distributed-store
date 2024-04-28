@@ -30,3 +30,5 @@ Run tests:
 `curl 'http://127.0.0.1:8080/get?key=m'`
 
 Index of shards should be consecutive!
+
+db-location for badger db should be a path to a directory, for bold db a path to a file.
