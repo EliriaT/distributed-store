@@ -26,8 +26,8 @@ Run tests:
 
 `go run main.go -db-location my.db -shard Chisinau`
 
-`curl 'http://127.0.0.2:8080/set?key=m&value=s'`
-`curl 'http://127.0.0.2:8080/get?key=m'`
+`curl 'http://127.0.0.2:8080/set?key=utm&value=fcim'`
+`curl 'http://127.0.0.2:8080/get?key=utm'`
 
 Index of shards should be consecutive!
 
