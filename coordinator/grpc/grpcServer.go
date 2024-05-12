@@ -19,6 +19,7 @@ type GrpcServer struct {
 	replicator        replication.OrderedReplicator
 	replicationFactor int
 	consistencyLevel  int
+	PeerConnections   map[int]proto.NodeServiceClient
 	proto.UnimplementedNodeServiceServer
 }
 
@@ -34,6 +35,7 @@ func NewServer(db db.Database, shards *config.Shards, cfg config.Config, envPath
 		replicationFactor: cfg.ReplicationFactor,
 		consistencyLevel:  cfg.ConsistencyLevel,
 		replicator:        replicator,
+		PeerConnections:   make(map[int]proto.NodeServiceClient),
 	}
 }
 
