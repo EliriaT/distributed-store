@@ -79,6 +79,7 @@ func main() {
 	defer closeFunc()
 
 	startGRPCServer(database, shards, shardConfig)
+	//startHttpServer(database, shards, shardConfig)
 }
 
 func startGRPCServer(db db.Database, shards *config.Shards, cfg config.Config) {
@@ -92,17 +93,19 @@ func startGRPCServer(db db.Database, shards *config.Shards, cfg config.Config) {
 	s := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(kaep), grpc.KeepaliveParams(kasp))
 	proto.RegisterNodeServiceServer(s, srv)
 
-	// establishing http2 long lived connections with peer nodes
+	// establishing http2 long live connections with peer nodes
 	for _, peer := range cfg.Shards {
-		address := strings.Split(peer.Address, ":")
-		conn, err := grpc.NewClient(address[1], grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithKeepaliveParams(kacp))
-		if err != nil {
-			log.Fatalf("grpc: did not connect to node %s, error: %v", peer.Name, err)
-		}
-		defer conn.Close()
+		if peer.Idx != shards.CurrIdx {
+			address := strings.Split(peer.Address, ":")
+			conn, err := grpc.NewClient(fmt.Sprintf(":%s", address[1]), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithKeepaliveParams(kacp))
+			if err != nil {
+				log.Fatalf("grpc: did not connect to node %s, error: %v", peer.Name, err)
+			}
+			defer conn.Close()
 
-		peerConn := proto.NewNodeServiceClient(conn)
-		srv.PeerConnections[peer.Idx] = peerConn
+			peerConn := proto.NewNodeServiceClient(conn)
+			srv.PeerConnections[peer.Idx] = peerConn
+		}
 	}
 
 	if err = s.Serve(lis); err != nil {
