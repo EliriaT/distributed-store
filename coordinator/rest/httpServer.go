@@ -1,4 +1,4 @@
-package coordinator
+package rest
 
 import (
 	"fmt"
@@ -184,7 +184,7 @@ outerLoop:
 			}
 
 			// if s.replicationFactor responses arrive, then the wait is stopped.
-			// TODO what if response does not arrive? http timeout will happen ?
+			// TODO what if response does not arrive? rest timeout will happen ?
 			if errorCounter+successCounter >= s.replicationFactor {
 				break outerLoop
 			}

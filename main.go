@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	config "github.com/EliriaT/distributed-store/config"
-	"github.com/EliriaT/distributed-store/coordinator"
+	"github.com/EliriaT/distributed-store/coordinator/rest"
 	"github.com/EliriaT/distributed-store/db"
 	"log"
 	"net/http"
@@ -50,7 +50,7 @@ func main() {
 	}
 	defer closeFunc()
 
-	srv := coordinator.NewServer(database, shards, shardConfig, *env)
+	srv := rest.NewServer(database, shards, shardConfig, *env)
 
 	http.HandleFunc("/get", srv.GetHandler)
 	http.HandleFunc("/set", srv.SetHandler)

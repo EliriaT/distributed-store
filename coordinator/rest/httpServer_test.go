@@ -1,10 +1,10 @@
-package coordinator_test
+package rest_test
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/EliriaT/distributed-store/config"
-	"github.com/EliriaT/distributed-store/coordinator"
+	"github.com/EliriaT/distributed-store/coordinator/rest"
 	"github.com/EliriaT/distributed-store/db"
 	"io"
 	"log"
@@ -63,7 +63,7 @@ func createShardDb(t *testing.T, idx int) *db.BoltDatabase {
 	return db
 }
 
-func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.BoltDatabase, *coordinator.HTTPServer) {
+func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.BoltDatabase, *rest.HTTPServer) {
 	t.Helper()
 
 	db := createShardDb(t, idx)
@@ -87,7 +87,7 @@ func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.BoltDat
 		CurrIdx: idx,
 	}
 
-	s := coordinator.NewServer(db, shards, cfg, "config/env/.env0")
+	s := rest.NewServer(db, shards, cfg, "config/env/.env0")
 	return db, s
 }
 
