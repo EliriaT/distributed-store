@@ -12,6 +12,7 @@ import (
 	"github.com/madalv/conalg/caesar"
 	"log"
 	"slices"
+	"sync"
 )
 
 // GrpcServer uses grpc for node communication.
@@ -48,7 +49,7 @@ func (g *GrpcServer) Get(ctx context.Context, getCommand *proto.GetRequest) (res
 		if err != nil {
 			return &proto.GetResponse{
 				Status: 500,
-				Error:  "Failed to read from db the key",
+				Error:  fmt.Sprintf("Failed to write to db the key %s, error: %v", getCommand.Key, err),
 			}, err
 
 		}
@@ -101,22 +102,137 @@ func (g *GrpcServer) Get(ctx context.Context, getCommand *proto.GetRequest) (res
 		Status: 500,
 		Value:  fmt.Sprintf("Failed to get succesfully key %s from all replicas, status: %d, error: %v", getCommand.Key, response.Status, response.Error),
 		Error:  "",
-	}, nil
+	}, err
 }
 
-func (g *GrpcServer) Set(context.Context, *proto.SetRequest) (*proto.SetResponse, error) {
+func (g *GrpcServer) Set(ctx context.Context, setCommand *proto.SetRequest) (response *proto.SetResponse, err error) {
+	key := setCommand.Key
+	value := setCommand.Value
+
+	if setCommand.Coordinator == false {
+		err = g.db.SetKey(key, []byte(value))
+		if err != nil {
+			return &proto.SetResponse{
+				Status: 500,
+				Error:  fmt.Sprintf("Failed to write to db the key %s, error: %v", key, err),
+			}, err
+		}
+
+		return &proto.SetResponse{
+			Status: 200,
+			Error:  "",
+		}, nil
+	}
+
+	// Add to the order replicator the set command
+	g.replicator.Replicate(key, value)
+
+	shards, err := g.sharder.GetNReplicas(key, g.replicationFactor)
+	if err != nil {
+		return &proto.SetResponse{
+			Status: 500,
+			Error:  fmt.Sprintf("Failed to get %d replicas for key %s", g.replicationFactor, key),
+		}, err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(g.consistencyLevel)
+	errCh := make(chan error, g.replicationFactor)
+	successCh := make(chan int, g.replicationFactor)
+	successCounter := 0
+	errorCounter := 0
+
+	for i, shard := range shards {
+		var closure func(shard int, errCh chan<- error)
+
+		if shard == g.shards.CurrIdx {
+			closure = func(shard int, errCh chan<- error) {
+				err = g.db.SetKey(key, []byte(value))
+				if err != nil {
+					errCh <- err
+					return
+				}
+				successCh <- shard
+			}
+		} else {
+			closure = func(shard int, errCh chan<- error) {
+				setCommand.Coordinator = false
+				_, err = g.PeerConnections[shard].Set(ctx, setCommand)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				successCh <- shard
+			}
+		}
+
+		if i < g.consistencyLevel {
+			go func(shard int, errCh chan<- error) {
+				closure(shard, errCh)
+				defer wg.Done()
+			}(shard, errCh)
+		} else {
+			go closure(shard, errCh)
+		}
+	}
+
+	wg.Wait()
+
+	replicatedOn := make([]int32, 0)
+
+outerLoop:
+	for {
+		select {
+		case replicatedShard := <-successCh:
+			replicatedOn = append(replicatedOn, int32(replicatedShard))
+			successCounter++
+			if successCounter == g.consistencyLevel {
+				break outerLoop
+			}
+
+			if errorCounter+successCounter >= g.replicationFactor {
+				break outerLoop
+			}
+		default:
+			<-errCh
+			errorCounter++
+			if errorCounter+successCounter >= g.replicationFactor {
+				break outerLoop
+			}
+		}
+	}
+
+	status := 200
+	if successCounter == 0 {
+		status = 500
+	}
+
+	errorMessage := ""
+	if err != nil {
+		errorMessage = fmt.Sprintf("While replicated encounted error: %v", err)
+	}
 
 	return &proto.SetResponse{
-		Status:       200,
-		ReplicatedOn: []int32{1, 2, 3, 4},
-		Error:        "",
-	}, nil
+		Status:       int32(status),
+		ReplicatedOn: replicatedOn,
+		Error:        errorMessage,
+	}, err
 }
 
-func (g *GrpcServer) DeleteExtraKeys(context.Context, *proto.Empty) (*proto.StatusResponse, error) {
+func (g *GrpcServer) DeleteExtraKeys(ctx context.Context, _ *proto.Empty) (*proto.StatusResponse, error) {
+	err := g.db.DeleteExtraKeys(func(key string) bool {
+		return g.sharder.Index(key) != g.shards.CurrIdx
+	})
+
+	status := 200
+	errorMessage := ""
+	if err != nil {
+		status = 500
+		errorMessage = fmt.Sprintf("Failed to delete extra keys, error: %v", err)
+	}
 
 	return &proto.StatusResponse{
-		Status: 200,
-		Error:  "",
-	}, nil
+		Status: int32(status),
+		Error:  errorMessage,
+	}, err
 }
