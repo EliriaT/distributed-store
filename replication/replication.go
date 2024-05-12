@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
-	"github.com/EliriaT/distributed-store/db/sharding"
+	"github.com/EliriaT/distributed-store/sharding"
 	"github.com/madalv/conalg/caesar"
 	"golang.org/x/exp/slices"
 	"log"

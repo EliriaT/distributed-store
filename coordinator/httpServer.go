@@ -1,11 +1,11 @@
-package web
+package coordinator
 
 import (
 	"fmt"
 	"github.com/EliriaT/distributed-store/config"
 	"github.com/EliriaT/distributed-store/db"
-	"github.com/EliriaT/distributed-store/db/sharding"
 	"github.com/EliriaT/distributed-store/replication"
+	"github.com/EliriaT/distributed-store/sharding"
 	"github.com/gookit/slog"
 	"github.com/madalv/conalg/caesar"
 	"golang.org/x/exp/slices"
@@ -197,7 +197,7 @@ outerLoop:
 		}
 	}
 
-	fmt.Fprintf(w, "CL = %d, RF= %d, Replicated successfully on shards = %v, coordinator shard = %d, error = %v, \n", s.consistencyLevel, s.replicationFactor, shards, s.shards.CurrIdx, err)
+	fmt.Fprintf(w, "CL = %d, RF = %d, Replicated successfully on shards = %v, coordinator shard = %d, error = %v, \n", s.consistencyLevel, s.replicationFactor, shards, s.shards.CurrIdx, err)
 
 	log.Println("\n-------------------------")
 }
