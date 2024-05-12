@@ -16,8 +16,8 @@ import (
 	"sync"
 )
 
-// Server contains HTTP method handlers to be used for the database.
-type Server struct {
+// HTTPServer contains HTTP method handlers to be used for the database.
+type HTTPServer struct {
 	db                db.Database
 	shards            *config.Shards
 	sharder           sharding.Sharder
@@ -27,12 +27,12 @@ type Server struct {
 }
 
 // NewServer creates a new instance with HTTP handlers to be used to get and set values.
-func NewServer(db db.Database, shards *config.Shards, cfg config.Config, envPath string) *Server {
+func NewServer(db db.Database, shards *config.Shards, cfg config.Config, envPath string) *HTTPServer {
 	replicator := replication.NewOrderedReplicator(db, shards, cfg)
 	conalg := caesar.InitConalgModule(&replicator, envPath, slog.FatalLevel, false)
 	replicator.SetConalgModule(conalg)
 
-	return &Server{
+	return &HTTPServer{
 		db:                db,
 		shards:            shards,
 		sharder:           sharding.NewConsistentHasher(cfg),
@@ -43,7 +43,7 @@ func NewServer(db db.Database, shards *config.Shards, cfg config.Config, envPath
 }
 
 // GetHandler handles read requests to the distributed database.
-func (s *Server) GetHandler(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) GetHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	key := r.Form.Get("key")
 	isCoordinator := r.Form.Get("coordinator")
@@ -97,7 +97,7 @@ func (s *Server) GetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetHandler handles write requests to the distributed database.
-func (s *Server) SetHandler(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) SetHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	key := r.Form.Get("key")
 	value := r.Form.Get("value")
@@ -184,6 +184,7 @@ outerLoop:
 			}
 
 			// if s.replicationFactor responses arrive, then the wait is stopped.
+			// TODO what if response does not arrive? http timeout will happen ?
 			if errorCounter+successCounter >= s.replicationFactor {
 				break outerLoop
 			}
@@ -201,7 +202,7 @@ outerLoop:
 	log.Println("\n-------------------------")
 }
 
-func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request) (string, error) {
+func (s *HTTPServer) redirect(shardIndx int, w http.ResponseWriter, r *http.Request) (string, error) {
 	url := "http://" + s.shards.Addrs[shardIndx] + r.RequestURI + "&coordinator=false"
 
 	resp, err := http.Get(url)
@@ -225,7 +226,7 @@ func (s *Server) redirect(shardIndx int, w http.ResponseWriter, r *http.Request)
 }
 
 // DeleteExtraKeysHandler deletes keys that don't belong to the current shard.
-func (s *Server) DeleteExtraKeysHandler(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPServer) DeleteExtraKeysHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Error = %v\n", s.db.DeleteExtraKeys(func(key string) bool {
 		return s.sharder.Index(key) != s.shards.CurrIdx
 	}))

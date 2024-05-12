@@ -101,3 +101,18 @@ func (d *BoltDatabase) DeleteExtraKeys(isExtra func(string) bool) error {
 		return nil
 	})
 }
+
+func (d *BoltDatabase) WriteInBatch(setCommands []SetCommand) error {
+	err := d.db.Batch(func(tx *bolt.Tx) error {
+		for _, command := range setCommands {
+			err := tx.Bucket(defaultBucket).Put([]byte(command.Key), []byte(command.Value))
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return err
+}

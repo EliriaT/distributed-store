@@ -63,7 +63,7 @@ func createShardDb(t *testing.T, idx int) *db.BoltDatabase {
 	return db
 }
 
-func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.BoltDatabase, *web.Server) {
+func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.BoltDatabase, *web.HTTPServer) {
 	t.Helper()
 
 	db := createShardDb(t, idx)
@@ -87,7 +87,7 @@ func createShardServer(t *testing.T, idx int, addrs map[int]string) (*db.BoltDat
 		CurrIdx: idx,
 	}
 
-	s := web.NewServer(db, shards, cfg)
+	s := web.NewServer(db, shards, cfg, "config/env/.env0")
 	return db, s
 }
 
