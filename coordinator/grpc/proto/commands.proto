@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "/coordinator/grpc/proto";
+
+service NodeService {
+  rpc Get(GetRequest) returns (GetResponse) {}
+  rpc Set(SetRequest) returns (SetResponse) {}
+  rpc DeleteExtraKeys(Empty)  returns (StatusResponse){}
+}
+
+message GetRequest {
+  string key = 1;
+  bool coordinator = 2;
+}
+
+message GetResponse {
+  int32 status = 1;
+  string value = 2;
+  string error = 3;
+}
+
+message SetRequest {
+  string key = 1;
+  string value = 2;
+  bool coordinator = 3;
+}
+
+message SetResponse {
+  int32 status = 1;
+  repeated int32 replicatedOn = 2 [packed=true];
+  string error = 3;
+}
+
+message Empty {}
+
+message StatusResponse {
+  int32 status = 1;
+  string error = 2;
+}

@@ -2,11 +2,17 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	config "github.com/EliriaT/distributed-store/config"
+	grpcCoordinator "github.com/EliriaT/distributed-store/coordinator/grpc"
+	"github.com/EliriaT/distributed-store/coordinator/grpc/proto"
 	"github.com/EliriaT/distributed-store/coordinator/rest"
 	"github.com/EliriaT/distributed-store/db"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 )
 
 var (
@@ -50,7 +56,27 @@ func main() {
 	}
 	defer closeFunc()
 
-	srv := rest.NewServer(database, shards, shardConfig, *env)
+	startGRPCServer(database, shards, shardConfig)
+}
+
+func startGRPCServer(db db.Database, shards *config.Shards, cfg config.Config) {
+	srv := grpcCoordinator.NewServer(db, shards, cfg, *env)
+
+	address := strings.Split(*httpAddr, ":")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", address[1]))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	proto.RegisterNodeServiceServer(s, srv)
+
+	if err = s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
+func startHttpServer(db db.Database, shards *config.Shards, cfg config.Config) {
+	srv := rest.NewServer(db, shards, cfg, *env)
 
 	http.HandleFunc("/get", srv.GetHandler)
 	http.HandleFunc("/set", srv.SetHandler)
