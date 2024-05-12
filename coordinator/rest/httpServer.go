@@ -21,7 +21,7 @@ type HTTPServer struct {
 	db                db.Database
 	shards            *config.Shards
 	sharder           sharding.Sharder
-	replicator        replication.OrderedReplicator
+	replicator        *replication.OrderedReplicator
 	replicationFactor int
 	consistencyLevel  int
 }
@@ -29,7 +29,7 @@ type HTTPServer struct {
 // NewServer creates a new instance with HTTP handlers to be used to get and set values.
 func NewServer(db db.Database, shards *config.Shards, cfg config.Config, envPath string) *HTTPServer {
 	replicator := replication.NewOrderedReplicator(db, shards, cfg)
-	conalg := caesar.InitConalgModule(&replicator, envPath, slog.FatalLevel, false)
+	conalg := caesar.InitConalgModule(replicator, envPath, slog.FatalLevel, false)
 	replicator.SetConalgModule(conalg)
 
 	return &HTTPServer{
