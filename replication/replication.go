@@ -12,6 +12,7 @@ import (
 )
 
 const batchTimeout = 5 * time.Minute
+const maxBatchSize = 100
 
 // OrderedReplicator uses the caesar consensus module for guaranteeing an order for set replicated commands
 type OrderedReplicator struct {
@@ -72,6 +73,7 @@ func (r *OrderedReplicator) executeBatchWhenTimeoutOrBatchLimitReached() {
 		case <-r.batchUpdated:
 			if r.currBatchSize >= int(r.maxBatchSize) {
 				r.executeBatchWrite()
+				r.timer.Reset(batchTimeout)
 			}
 		}
 	}
@@ -101,7 +103,7 @@ func (r *OrderedReplicator) Replicate(key string, value string) {
 }
 
 func NewOrderedReplicator(datastore db.Database, shards *config.Shards, cfg config.Config) *OrderedReplicator {
-	batchSize := 100
+	batchSize := maxBatchSize
 	orderedReplicator := &OrderedReplicator{
 		db:                datastore,
 		shards:            shards,
@@ -111,7 +113,7 @@ func NewOrderedReplicator(datastore db.Database, shards *config.Shards, cfg conf
 		batchQueue:        make([]db.SetCommand, 0, batchSize),
 		replicationFactor: cfg.ReplicationFactor,
 		timer:             time.NewTimer(batchTimeout),
-		batchUpdated:      make(chan struct{}, 50),
+		batchUpdated:      make(chan struct{}, 500),
 	}
 
 	go func() {

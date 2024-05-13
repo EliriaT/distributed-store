@@ -9,14 +9,14 @@ address = "127.0.0.0:8080"
 [[shards]]
 idx = 1
 name = "Balti"
-address = "127.0.0.1:8081"
+address = "127.0.0.0:8081"
 
 [[shards]]
 idx = 2
 name = "Orhei"
-address = "127.0.0.2:8082"
+address = "127.0.0.0:8082"
 
 [[shards]]
 idx = 3
 name = "Cahul"
-address = "127.0.0.3:8083"
+address = "127.0.0.0:8083"

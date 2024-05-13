@@ -12,10 +12,10 @@ go install -v
 
 distributed-store -db-location=database/chisinau -http-addr=127.0.0.0:8080 -config-file=sharding.toml -shard=Chisinau -env=config/env/.env0 &
 
-distributed-store -db-location=database/balti -http-addr=127.0.0.1:8081 -config-file=sharding.toml -shard=Balti -env=config/env/.env1 &
+distributed-store -db-location=database/balti -http-addr=127.0.0.0:8081 -config-file=sharding.toml -shard=Balti -env=config/env/.env1 &
 
-distributed-store -db-location=database/orhei -http-addr=127.0.0.2:8082 -config-file=sharding.toml -shard=Orhei -env=config/env/.env2  &
+distributed-store -db-location=database/orhei -http-addr=127.0.0.0:8082 -config-file=sharding.toml -shard=Orhei -env=config/env/.env2  &
 
-distributed-store -db-location=database/cahul -http-addr=127.0.0.3:8083 -config-file=sharding.toml -shard=Cahul -env=config/env/.env3 &
+distributed-store -db-location=database/cahul -http-addr=127.0.0.0:8083 -config-file=sharding.toml -shard=Cahul -env=config/env/.env3 &
 
 wait

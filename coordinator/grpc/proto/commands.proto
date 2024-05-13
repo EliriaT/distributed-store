@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package auth;
+package commands;
 
 option go_package = "/coordinator/grpc/proto";
 

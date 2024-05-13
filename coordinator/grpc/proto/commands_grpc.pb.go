@@ -37,7 +37,7 @@ func NewNodeServiceClient(cc grpc.ClientConnInterface) NodeServiceClient {
 
 func (c *nodeServiceClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
 	out := new(GetResponse)
-	err := c.cc.Invoke(ctx, "/auth.NodeService/Get", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/commands.NodeService/Get", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (c *nodeServiceClient) Get(ctx context.Context, in *GetRequest, opts ...grp
 
 func (c *nodeServiceClient) Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*SetResponse, error) {
 	out := new(SetResponse)
-	err := c.cc.Invoke(ctx, "/auth.NodeService/Set", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/commands.NodeService/Set", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (c *nodeServiceClient) Set(ctx context.Context, in *SetRequest, opts ...grp
 
 func (c *nodeServiceClient) DeleteExtraKeys(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
-	err := c.cc.Invoke(ctx, "/auth.NodeService/DeleteExtraKeys", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/commands.NodeService/DeleteExtraKeys", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func _NodeService_Get_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/auth.NodeService/Get",
+		FullMethod: "/commands.NodeService/Get",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(NodeServiceServer).Get(ctx, req.(*GetRequest))
@@ -124,7 +124,7 @@ func _NodeService_Set_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/auth.NodeService/Set",
+		FullMethod: "/commands.NodeService/Set",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(NodeServiceServer).Set(ctx, req.(*SetRequest))
@@ -142,7 +142,7 @@ func _NodeService_DeleteExtraKeys_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/auth.NodeService/DeleteExtraKeys",
+		FullMethod: "/commands.NodeService/DeleteExtraKeys",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(NodeServiceServer).DeleteExtraKeys(ctx, req.(*Empty))
@@ -154,7 +154,7 @@ func _NodeService_DeleteExtraKeys_Handler(srv interface{}, ctx context.Context, 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var NodeService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "auth.NodeService",
+	ServiceName: "commands.NodeService",
 	HandlerType: (*NodeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
