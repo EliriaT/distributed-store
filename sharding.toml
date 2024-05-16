@@ -1,5 +1,5 @@
-replication_factor = 3
-consistency_level = 2
+replication_factor = 2
+consistency_level = 1
 
 [[shards]]
 idx = 0
@@ -15,8 +15,3 @@ address = "127.0.0.0:8081"
 idx = 2
 name = "Orhei"
 address = "127.0.0.0:8082"
-
-[[shards]]
-idx = 3
-name = "Cahul"
-address = "127.0.0.0:8083"

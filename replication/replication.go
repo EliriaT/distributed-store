@@ -6,12 +6,12 @@ import (
 	"github.com/EliriaT/distributed-store/db"
 	"github.com/EliriaT/distributed-store/sharding"
 	"github.com/madalv/conalg/caesar"
-	"golang.org/x/exp/slices"
 	"log"
+	"slices"
 	"time"
 )
 
-const batchTimeout = 5 * time.Minute
+const batchTimeout = 8 * time.Second
 const maxBatchSize = 100
 
 // OrderedReplicator uses the caesar consensus module for guaranteeing an order for set replicated commands
@@ -68,12 +68,12 @@ func (r *OrderedReplicator) executeBatchWhenTimeoutOrBatchLimitReached() {
 	for {
 		select {
 		case <-r.timer.C:
-			r.executeBatchWrite()
 			r.timer.Reset(batchTimeout)
+			r.executeBatchWrite()
 		case <-r.batchUpdated:
 			if r.currBatchSize >= int(r.maxBatchSize) {
-				r.executeBatchWrite()
 				r.timer.Reset(batchTimeout)
+				r.executeBatchWrite()
 			}
 		}
 	}

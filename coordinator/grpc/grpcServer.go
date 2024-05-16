@@ -74,7 +74,7 @@ func (g *GrpcServer) Get(ctx context.Context, getCommand *proto.GetRequest) (res
 		value, err = g.db.GetKey(getCommand.Key)
 
 		if err == nil {
-			log.Printf("Get processed on coordinator node %d, key = %s, value = %s", g.shards.CurrIdx, getCommand.Key, value)
+			log.Printf("Get processed on coordinator node %d, key = %s, value = %s", g.shards.CurrIdx, getCommand.Key, string(value))
 			return &proto.GetResponse{
 				Status: 200,
 				Value:  string(value),
@@ -90,7 +90,7 @@ func (g *GrpcServer) Get(ctx context.Context, getCommand *proto.GetRequest) (res
 			continue
 		}
 
-		log.Printf("Get processed on shard node %d, key = %s, value = %s", shard, getCommand.Key, value)
+		log.Printf("Get processed on shard node %d, key = %s, value = %s", shard, getCommand.Key, string(value))
 		return &proto.GetResponse{
 			Status: 200,
 			Value:  response.Value,

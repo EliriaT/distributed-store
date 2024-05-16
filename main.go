@@ -78,8 +78,8 @@ func main() {
 	}
 	defer closeFunc()
 
-	startGRPCServer(database, shards, shardConfig)
-	//startHttpServer(database, shards, shardConfig)
+	//startGRPCServer(database, shards, shardConfig)
+	startHttpServer(database, shards, shardConfig)
 }
 
 func startGRPCServer(db db.Database, shards *config.Shards, cfg config.Config) {
