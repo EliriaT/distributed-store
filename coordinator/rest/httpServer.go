@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 // HTTPServer contains HTTP method handlers to be used for the database.
@@ -149,7 +150,7 @@ func (s *HTTPServer) SetHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			closure = func(shard int, errCh chan<- error) {
-				_, err = s.redirect(shard, w, r)
+				_, err := s.redirect(shard, w, r)
 				if err != nil {
 					log.Printf("Failed to replicate key = %s, value = %s on shard %d, error = %v", key, value, shard, err)
 					errCh <- err
@@ -189,7 +190,7 @@ outerLoop:
 				break outerLoop
 			}
 		default:
-			<-errCh
+			err = <-errCh
 			errorCounter++
 			if errorCounter+successCounter >= s.replicationFactor {
 				break outerLoop
@@ -197,6 +198,10 @@ outerLoop:
 		}
 	}
 
+	if err != nil && len(shards) == 0 {
+		w.WriteHeader(http.StatusFailedDependency)
+
+	}
 	fmt.Fprintf(w, "CL = %d, RF = %d, Replicated successfully on shards = %v, coordinator shard = %d, error = %v, \n", s.consistencyLevel, s.replicationFactor, shards, s.shards.CurrIdx, err)
 
 	log.Println("\n-------------------------")
@@ -205,7 +210,11 @@ outerLoop:
 func (s *HTTPServer) redirect(shardIndx int, w http.ResponseWriter, r *http.Request) (string, error) {
 	url := "http://" + s.shards.Addrs[shardIndx] + r.RequestURI + "&coordinator=false"
 
-	resp, err := http.Get(url)
+	client := http.Client{
+		Timeout: time.Second,
+	}
+
+	resp, err := client.Get(url)
 	if err != nil {
 		log.Printf("Error on node %d when redirecting the request: %v \n", s.shards.CurrIdx, err)
 		return "", err
