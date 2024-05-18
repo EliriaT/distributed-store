@@ -13,6 +13,7 @@ import (
 	"log"
 	"slices"
 	"sync"
+	"time"
 )
 
 // GrpcServer uses grpc for node communication.
@@ -45,6 +46,9 @@ func NewServer(db db.Database, shards *config.Shards, cfg config.Config, envPath
 
 func (g *GrpcServer) Get(ctx context.Context, getCommand *proto.GetRequest) (response *proto.GetResponse, err error) {
 	if getCommand.Coordinator == false {
+		if g.shards.CurrIdx != 0 {
+			time.Sleep(time.Minute)
+		}
 		value, err := g.db.GetKey(getCommand.Key)
 		if err != nil {
 			return &proto.GetResponse{
@@ -85,7 +89,11 @@ func (g *GrpcServer) Get(ctx context.Context, getCommand *proto.GetRequest) (res
 
 	for _, shard := range shards {
 		getCommand.Coordinator = false
-		response, err = g.PeerConnections[shard].Get(ctx, getCommand)
+
+		ctx2, cancelFunc := context.WithTimeout(context.Background(), time.Second)
+		defer cancelFunc()
+
+		response, err = g.PeerConnections[shard].Get(ctx2, getCommand)
 		if err != nil {
 			continue
 		}
@@ -99,10 +107,10 @@ func (g *GrpcServer) Get(ctx context.Context, getCommand *proto.GetRequest) (res
 	}
 
 	return &proto.GetResponse{
-		Status: 500,
-		Value:  fmt.Sprintf("Failed to get succesfully key %s from all replicas, status: %d, error: %v", getCommand.Key, response.Status, response.Error),
+		Status: 424,
+		Value:  fmt.Sprintf("Failed to get succesfully key %s from all replicas, status: %d, error: %v", getCommand.Key, 424, err),
 		Error:  "",
-	}, err
+	}, nil
 }
 
 func (g *GrpcServer) Set(ctx context.Context, setCommand *proto.SetRequest) (response *proto.SetResponse, err error) {
@@ -110,6 +118,10 @@ func (g *GrpcServer) Set(ctx context.Context, setCommand *proto.SetRequest) (res
 	value := setCommand.Value
 
 	if setCommand.Coordinator == false {
+		if g.shards.CurrIdx != 0 {
+			time.Sleep(time.Minute)
+		}
+
 		err = g.db.SetKey(key, []byte(value))
 		if err != nil {
 			return &proto.SetResponse{
@@ -157,7 +169,11 @@ func (g *GrpcServer) Set(ctx context.Context, setCommand *proto.SetRequest) (res
 		} else {
 			closure = func(shard int, errCh chan<- error) {
 				setCommand.Coordinator = false
-				_, err = g.PeerConnections[shard].Set(ctx, setCommand)
+
+				ctx2, cancelFunc := context.WithTimeout(context.Background(), time.Second)
+				defer cancelFunc()
+
+				_, err = g.PeerConnections[shard].Set(ctx2, setCommand)
 				if err != nil {
 					errCh <- err
 					return
@@ -204,19 +220,19 @@ outerLoop:
 
 	status := 200
 	if successCounter == 0 {
-		status = 500
+		status = 424
 	}
 
 	errorMessage := ""
 	if err != nil {
-		errorMessage = fmt.Sprintf("While replicated encounted error: %v", err)
+		errorMessage = fmt.Sprintf("While replicating encounted error: %v", err)
 	}
 
 	return &proto.SetResponse{
 		Status:       int32(status),
 		ReplicatedOn: replicatedOn,
 		Error:        errorMessage,
-	}, err
+	}, nil
 }
 
 func (g *GrpcServer) DeleteExtraKeys(ctx context.Context, _ *proto.Empty) (*proto.StatusResponse, error) {

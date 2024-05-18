@@ -28,7 +28,7 @@ var (
 
 var kacp = keepalive.ClientParameters{
 	Time:                20 * time.Second, // send pings every 20 seconds if there is no activity
-	Timeout:             2 * time.Second,  // wait 1 second for ping ack before considering the connection dead
+	Timeout:             2 * time.Second,  // wait 2 second for ping ack before considering the connection dead
 	PermitWithoutStream: true,             // send pings even without active streams
 }
 
@@ -78,8 +78,8 @@ func main() {
 	}
 	defer closeFunc()
 
-	//startGRPCServer(database, shards, shardConfig)
-	startHttpServer(database, shards, shardConfig)
+	startGRPCServer(database, shards, shardConfig)
+	//startHttpServer(database, shards, shardConfig)
 }
 
 func startGRPCServer(db db.Database, shards *config.Shards, cfg config.Config) {
