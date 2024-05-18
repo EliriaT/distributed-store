@@ -219,7 +219,7 @@ outerLoop:
 	}
 
 	status := 200
-	if successCounter == 0 {
+	if err != nil && len(replicatedOn) != g.consistencyLevel {
 		status = 424
 	}
 

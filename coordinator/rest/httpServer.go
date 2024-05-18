@@ -198,10 +198,10 @@ outerLoop:
 		}
 	}
 
-	if err != nil && len(shards) == 0 {
+	if err != nil && len(shards) != s.consistencyLevel {
 		w.WriteHeader(http.StatusFailedDependency)
-
 	}
+
 	fmt.Fprintf(w, "CL = %d, RF = %d, Replicated successfully on shards = %v, coordinator shard = %d, error = %v, \n", s.consistencyLevel, s.replicationFactor, shards, s.shards.CurrIdx, err)
 
 	log.Println("\n-------------------------")
