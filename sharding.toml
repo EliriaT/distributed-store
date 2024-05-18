@@ -2,7 +2,7 @@ replication_factor = 2
 consistency_level = 1
 transport_protocol = "http"
 storage_module = "lsm"
-logs = true
+logs = false
 
 [[shards]]
 idx = 0

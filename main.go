@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -90,6 +91,11 @@ func main() {
 		log.Fatalf("Error creating %q: %v", *dbLocation, err)
 	}
 	defer closeFunc()
+
+	if shardConfig.MustLog == false {
+		log.SetOutput(io.Discard)
+		log.SetFlags(0)
+	}
 
 	if shardConfig.TransportProtocol == HTTP_TRANSPORT {
 		startHttpServer(database, shards, shardConfig)
