@@ -1,0 +1,20 @@
+@startuml
+left to right direction
+
+actor "Developer" as C
+
+rectangle "Distributed Data Store" {
+  usecase "Select HTTP transport module" as T1
+  usecase "Select gRPC transport module" as T2
+  usecase "Select B+ tree storage module" as S1
+  usecase "Select LSM storage module" as S2
+  usecase "Set on/off logging" as L
+}
+
+C --> T1
+C --> T2
+C --> S1
+C --> S2
+C --> L
+
+@enduml

@@ -1,0 +1,14 @@
+@startuml
+left to right direction
+
+actor "Consumer" as C
+
+rectangle "Distributed Data Store" {
+  usecase "Get a value by key" as GK
+  usecase "Set a key value pair" as SK
+}
+
+C --> GK
+C --> SK
+
+@enduml

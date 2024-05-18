@@ -1,0 +1,29 @@
+@startuml
+
+node "Data Store Node" {
+  database "LSM Storage" as DB
+  component "Data Storage Module" as DM
+  component "Consensus Module" as CM
+  component "Replication Module" as RM
+
+  component "Sharding Module" as SM
+  component "Coordinator Transport Module" as CTM
+}
+
+actor "Client" as C
+node "Other Nodes" as N
+
+
+C --> CTM
+CTM --> N
+
+DM --> DB
+CTM --> DM
+CTM --> SM
+CTM --> RM
+RM --> CM
+CM --> RM
+RM --> SM
+RM --> DM
+
+@enduml

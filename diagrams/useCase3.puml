@@ -1,0 +1,14 @@
+@startuml
+left to right direction
+
+actor "Client" as C
+
+rectangle "Distributed Data Store" {
+  usecase "Set a replication factor" as RF
+  usecase "Set a consistency level" as CL
+}
+
+C --> RF
+C --> CL
+
+@enduml
