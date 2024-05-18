@@ -26,6 +26,11 @@ var (
 	env        = flag.String("env", "", "The path to env file for the consensus module")
 )
 
+const (
+	HTTP_TRANSPORT string = "http"
+	LSM_STORAGE    string = "lsm"
+)
+
 var kacp = keepalive.ClientParameters{
 	Time:                20 * time.Second, // send pings every 20 seconds if there is no activity
 	Timeout:             2 * time.Second,  // wait 2 second for ping ack before considering the connection dead
@@ -72,14 +77,25 @@ func main() {
 
 	log.Printf("Shard count is %d, current shard: %d", shards.Count, shards.CurrIdx)
 
-	database, closeFunc, err := db.NewBadgerDatabase(*dbLocation)
+	var database db.Database
+	var closeFunc func() error
+
+	if shardConfig.StorageModule == LSM_STORAGE {
+		database, closeFunc, err = db.NewBadgerDatabase(*dbLocation)
+	} else {
+		database, closeFunc, err = db.NewBoltDatabase(*dbLocation)
+	}
+
 	if err != nil {
 		log.Fatalf("Error creating %q: %v", *dbLocation, err)
 	}
 	defer closeFunc()
 
-	startGRPCServer(database, shards, shardConfig)
-	//startHttpServer(database, shards, shardConfig)
+	if shardConfig.TransportProtocol == HTTP_TRANSPORT {
+		startHttpServer(database, shards, shardConfig)
+	} else {
+		startGRPCServer(database, shards, shardConfig)
+	}
 }
 
 func startGRPCServer(db db.Database, shards *config.Shards, cfg config.Config) {

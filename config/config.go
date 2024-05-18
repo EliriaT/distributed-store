@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"strings"
 )
 
 // Shard is a node responsible for a set of keys.
@@ -19,8 +20,11 @@ func (m Shard) String() string {
 // Config describes the sharding config.
 type Config struct {
 	Shards            []Shard
-	ReplicationFactor int `toml:"replication_factor"`
-	ConsistencyLevel  int `toml:"consistency_level"`
+	ReplicationFactor int    `toml:"replication_factor"`
+	ConsistencyLevel  int    `toml:"consistency_level"`
+	TransportProtocol string `toml:"transport_protocol"`
+	StorageModule     string `toml:"storage_module"`
+	MustLog           bool   `toml:"logs"`
 }
 
 func (c Config) GetShardIndex(name string) int {
@@ -71,6 +75,14 @@ func validateConfiguration(config Config) error {
 
 	if config.ConsistencyLevel < 1 {
 		return fmt.Errorf("consistency level, %d, cannot be smaller than 1", config.ReplicationFactor)
+	}
+
+	if strings.ToLower(config.TransportProtocol) != "http" && strings.ToLower(config.TransportProtocol) != "grpc" {
+		return fmt.Errorf("unsupported value for transport_protocol: %s. Allowed: http/grpc", config.TransportProtocol)
+	}
+
+	if strings.ToLower(config.StorageModule) != "lsm" && strings.ToLower(config.StorageModule) != "btree" {
+		return fmt.Errorf("unsupported value for StorageModule: %s. Allowed: lsm/btree", config.StorageModule)
 	}
 
 	return nil
