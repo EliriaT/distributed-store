@@ -1,0 +1,16 @@
+@startuml
+
+actor Client as C
+box "Distributed Data Store"
+participant "Coordinator Node" as CN
+participant "Replica 1" as N1
+participant "Replica 2" as N2
+participant "Replica 3" as N3
+end box
+
+
+C -> CN : Get key X
+CN -> CN : Read key X from
+CN -> C : Key & Value
+
+@enduml

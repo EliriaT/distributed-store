@@ -1,0 +1,27 @@
+@startuml
+
+title Replication Factor=3, Consistency Level=2
+
+actor Client as C
+box "Distributed Data Store"
+participant "Coordinator Node" as CN
+participant "Replica 1" as N1
+participant "Replica 2" as N2
+participant "Replica 3" as N3
+end box
+
+
+C -> CN : Get key X
+CN -> N1 : Get key X
+N1 -> CN : Error, status = 500
+
+CN -> N2 : Get key X
+N2 -> CN : Error, status = 500
+
+
+CN -> N3 : Get key X
+N3 -> CN : Error, status = 500
+
+CN -> C : Error, status = 424
+
+@enduml

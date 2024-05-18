@@ -1,0 +1,24 @@
+@startuml
+
+title Replication Factor=3, Consistency Level=2
+
+actor Client as C
+box "Distributed Data Store"
+participant "Coordinator Node" as CN
+participant "Replica 1" as N1
+participant "Replica 2" as N2
+participant "Replica 3" as N3
+end box
+
+
+C -> CN : Get key X
+CN -> N1 : Read key X
+N1 ->x CN : Key & Value
+note right: Message did not reach
+...1 second timeout...
+CN -> N2 : Read key X
+N2 -> CN : Key & Value
+CN -> C : Key & Value
+
+
+@enduml
