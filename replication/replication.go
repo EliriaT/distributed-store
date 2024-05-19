@@ -42,9 +42,7 @@ func (r *OrderedReplicator) DetermineConflict(c1, c2 []byte) bool {
 	return command1.Key == command2.Key
 }
 
-// use a batch for consistent replication
 func (r *OrderedReplicator) Execute(c []byte) {
-
 	var command db.SetCommand
 	err := json.Unmarshal(c, &command)
 	if err != nil {

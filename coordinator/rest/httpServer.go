@@ -94,6 +94,10 @@ func (s *HTTPServer) GetHandler(w http.ResponseWriter, r *http.Request) {
 		break
 	}
 
+	if err != nil {
+		w.WriteHeader(http.StatusFailedDependency)
+	}
+
 	fmt.Fprintf(w, "Replica shard = %d, coordinator shard = %d, current addr = %q, Value = %q, error = %v \n", replica, s.shards.CurrIdx, s.shards.Addrs[s.shards.CurrIdx], value, err)
 }
 
