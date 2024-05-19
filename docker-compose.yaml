@@ -1,0 +1,58 @@
+version: "3.9"
+networks:
+  cluster-network:
+    external: true
+services:
+  node1:
+    image: eliriat/distributed-store-node
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: node1
+    networks:
+      - cluster-network
+    restart: always
+    ports:
+      - "8080:8080"
+      - "50001:50001"
+    expose:
+      - "8080"
+      - "50001"
+    entrypoint:
+      ["./main", "-db-location=database/chisinau", "-http-addr=0.0.0.0:8080", "-config-file=sharding.toml", "-shard=Chisinau", "-env=config/env/.env0"]
+
+  node2:
+    image: eliriat/distributed-store-node
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: node2
+    networks:
+      - cluster-network
+    restart: always
+    ports:
+      - "8081:8081"
+      - "50002:50002"
+    expose:
+      - "8081"
+      - "50002"
+    entrypoint:
+      [ "./main", "-db-location=database/chisinau", "-http-addr=0.0.0.0:8081", "-config-file=sharding.toml", "-shard=Balti", "-env=config/env/.env1" ]
+
+  node3:
+    image: eliriat/distributed-store-node
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: node3
+    networks:
+      - cluster-network
+    restart: always
+    ports:
+      - "8082:8082"
+      - "50003:50002"
+    expose:
+      - "8082"
+      - "50003"
+    entrypoint:
+      [ "./main", "-db-location=database/chisinau", "-http-addr=0.0.0.0:8082", "-config-file=sharding.toml", "-shard=Orhei", "-env=config/env/.env2" ]

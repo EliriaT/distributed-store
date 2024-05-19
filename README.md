@@ -29,6 +29,12 @@ Run tests:
 `curl 'http://127.0.0.2:8080/set?key=utm&value=fcim'`
 `curl 'http://127.0.0.2:8080/get?key=utm'`
 
+`docker build -t node .`
+
+`docker run --rm -p 8080:8080 node`
+
+`docker compose up`
+
 Index of shards should be consecutive!
 
 db-location for badger db should be a path to a directory, for bold db a path to a file.

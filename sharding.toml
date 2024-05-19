@@ -2,19 +2,19 @@ replication_factor = 2
 consistency_level = 1
 transport_protocol = "http"
 storage_module = "lsm"
-logs = false
+logs = true
 
 [[shards]]
 idx = 0
 name = "Chisinau"
-address = "127.0.0.0:8080"
+address = "node1:8080"
 
 [[shards]]
 idx = 1
 name = "Balti"
-address = "127.0.0.0:8081"
+address = "node2:8081"
 
 [[shards]]
 idx = 2
 name = "Orhei"
-address = "127.0.0.0:8082"
+address = "node3:8082"
