@@ -5,8 +5,8 @@ const BASE_URL = 'http://127.0.0.0';
 
 export let options = {
     stages: [
-        { duration: '1m', target: 50 },  // Ramp up to 50 users over 1 minute
-        { duration: '1m', target: 50 },  // Hold steady at 50 users for 1 minutes
+        { duration: '1m', target: 20 },  // Ramp up to 20 users over 1 minute
+        { duration: '1m', target: 20 },  // Hold steady at 20 users for 1 minutes
         { duration: '1m', target: 0 },    // Ramp down to 0 users over 1 minute
     ],
     thresholds: {

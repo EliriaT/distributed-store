@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const batchTimeout = 8 * time.Second
+const batchTimeout = 60 * time.Second
 const maxBatchSize = 100
 
 // OrderedReplicator uses the caesar consensus module for guaranteeing an order for set replicated commands

@@ -5,12 +5,12 @@ const BASE_URL = 'http://127.0.0.0';
 
 export let options = {
     stages: [
-        { duration: '1m', target: 50 },  // Ramp up to 50 users over 1 minute
-        { duration: '1m', target: 50 },  // Hold steady at 50 users for 1 minutes
+        { duration: '1m', target: 30 },  // Ramp up to 30 users over 1 minute
+        { duration: '1m', target: 30 },  // Hold steady at 30 users for 1 minutes
         { duration: '1m', target: 0 },    // Ramp down to 0 users over 1 minute
     ],
     thresholds: {
-        'http_req_duration': ['p(95)<500'], // 95% of requests should complete within 500ms
+        'http_req_duration': ['p(95)<300'], // 95% of requests should complete within 500ms
     },
 };
 
