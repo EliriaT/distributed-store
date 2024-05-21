@@ -12,11 +12,17 @@ end box
 
 
 C -> CN : Set key X value Y
+activate CN
 CN -> CN : Write key X value Y
-CN -> CN : ACKs
+CN -->> CN : ACKs
 CN -> N2 : Write key value
+activate N2
 CN -> N3 : Write key value
-N2 -> CN : ACKs
-CN -> C : Key & Value
-
+activate N3
+N2 -->> CN : ACKs
+deactivate N2
+CN -->> C : Key & Value
+deactivate CN
+N3 -->>X CN
+deactivate N3
 @enduml

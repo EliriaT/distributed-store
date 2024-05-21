@@ -12,16 +12,25 @@ end box
 
 
 C -> CN : Get key X
+activate CN
+
 CN -> N1 : Get key X
-N1 -> CN : Error, status = 500
+activate N1
+N1 -->> CN : Error, status = 500
+deactivate N1
 
 CN -> N2 : Get key X
-N2 -> CN : Error, status = 500
+activate N2
+N2 -->> CN : Error, status = 500
+deactivate N2
 
 
 CN -> N3 : Get key X
-N3 -> CN : Error, status = 500
+activate N3
+N3 -->> CN : Error, status = 500
+deactivate N3
 
-CN -> C : Error, status = 424
+CN -->> C : Error, status = 424
+deactivate CN
 
 @enduml

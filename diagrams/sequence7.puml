@@ -12,15 +12,22 @@ end box
 
 
 C -> CN : Set key X value Y
+activate CN
 CN -> N1 : Write key X value Y
-N1 -> CN : Error, status = 500
+activate N1
+N1 -->> CN : Error, status = 500
+deactivate N1
 
 CN -> N2 : Write key X value Y
-N2 -> CN : ACKs
+activate N2
+N2 -->> CN : ACKs
+deactivate N2
 
 CN -> N3 : Write key X value Y
-N3 -> CN : Error, status = 500
+activate N3
+N3 -->> CN : Error, status = 500
+deactivate N3
 
-CN -> C : Error, status = 424
-
+CN -->> C : Error, status = 424
+deactivate CN
 @enduml

@@ -10,12 +10,20 @@ participant "Replica 3" as N3
 end box
 
 C -> CN : Write key value
+activate CN
 CN -> N1 : Write key value
+activate N1
 CN -> N2 : Write key value
+activate N2
 CN -> N3 : Write key value
-N2 -> CN : ACKs
-N3 -> CN : ACKs
-CN -> C : Write commit
-
+activate N3
+N2 -->> CN : ACKs
+deactivate N2
+N3 -->> CN : ACKs
+deactivate N3
+CN -->> C : Write commit
+deactivate CN
+N1 -->>x CN : ACKs
+deactivate N1
 
 @enduml

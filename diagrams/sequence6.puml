@@ -12,12 +12,17 @@ end box
 
 
 C -> CN : Get key X
+activate CN
 CN -> N1 : Read key X
-N1 -> CN : Error, status = 500
+activate N1
+N1 -->> CN : Error, status = 500
+deactivate N1
 
 CN -> N2 : Read key X
-N2 -> CN : Key & Value
-CN -> C : Key & Value
-
+activate N2
+N2 -->> CN : Key & Value
+deactivate N2
+CN -->> C : Key & Value
+deactivate CN
 
 @enduml

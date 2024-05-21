@@ -12,13 +12,22 @@ end box
 
 
 C -> CN : Get key X
+activate CN
 CN -> N1 : Read key X
-N1 ->x CN : Key & Value
-note right: Message did not reach
-...1 second timeout...
-CN -> N2 : Read key X
-N2 -> CN : Key & Value
-CN -> C : Key & Value
+activate N1
+N1 -->>x CN : Key & Value
+deactivate N1
 
+note right
+Message did not reach because
+of 1 second timeout
+end note
+
+CN -> N2 : Read key X
+activate N2
+N2 -->> CN : Key & Value
+deactivate N2
+CN -->> C : Key & Value
+deactivate CN
 
 @enduml

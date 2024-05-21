@@ -1,5 +1,7 @@
 @startuml
 
+skinparam componentStyle rectangle
+
 node "Data Store Node" {
   database "LSM Storage" as DB
   component "Data Storage Module" as DM

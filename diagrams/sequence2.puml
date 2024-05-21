@@ -5,19 +5,24 @@ box "Distributed Data Store"
 participant "Coordinator Node" as CN
 participant "Replica 1" as N1
 participant "Replica 2" as N2
-participant "Replica 3" as N3
 end box
 
 
 C -> CN : Get key X
+activate CN
 CN -> N1 : Read key X
-N1 -> CN : Key & Value
-CN -> C : Key & Value
-
+activate N1
+N1 -->> CN : Key & Value
+deactivate N1
+CN -->> C : Key & Value
+deactivate CN
 
 C -> CN : Get key Y
+activate CN
 CN -> N2 : Read key Y
-N2 -> CN : Key & Value
-CN -> C : Key & Value
-
+activate N2
+N2 -->> CN : Key & Value
+deactivate N2
+CN -->> C : Key & Value
+deactivate CN
 @enduml
