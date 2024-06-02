@@ -16,7 +16,12 @@ proto:
 startSampleNode:
 	distributed-store -db-location=database/chisinau -http-addr=127.0.0.0:8080 -config-file=sharding.toml -shard=Chisinau -env=config/env/.env0
 
-k6_prometheus:
+k6_get:
 	K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9090/api/v1/write \
 	K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true \
 	k6 run -o experimental-prometheus-rw ./cmd/k6/httpGetTest.js
+
+k6_set:
+	K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9090/api/v1/write \
+	K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true \
+	k6 run -o experimental-prometheus-rw ./cmd/k6/httpSetTest.js

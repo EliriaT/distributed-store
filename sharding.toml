@@ -7,14 +7,14 @@ logs = true
 [[shards]]
 idx = 0
 name = "Chisinau"
-address = "node1:8080"
+address = "node0:8080"
 
 [[shards]]
 idx = 1
 name = "Balti"
-address = "node2:8081"
+address = "node1:8081"
 
 [[shards]]
 idx = 2
 name = "Orhei"
-address = "node3:8082"
+address = "node2:8082"
