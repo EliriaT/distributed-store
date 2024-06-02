@@ -35,6 +35,8 @@ Run tests:
 
 `docker compose up`
 
+`docker compose -f stats.yaml up`
+
 Index of shards should be consecutive!
 
 db-location for badger db should be a path to a directory, for bold db a path to a file.
