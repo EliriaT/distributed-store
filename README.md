@@ -44,20 +44,6 @@ distributed-store
 
 `go test ./...`
 
-------------------------------------------------------------------------
-Other: 
- 
-`curl 'http://127.0.0.2:8080/set?key=utm&value=fcim'`
-`curl 'http://127.0.0.2:8080/get?key=utm'`
-
-`docker build -t node .`
-
-`docker run --rm -p 8080:8080 node`
+7. To run in containerized environment:
 
 `docker compose up`
-
-`docker compose -f stats.yaml up`
-
-Index of shards should be consecutive!
-
-db-location for badger db should be a path to a directory, for bold db a path to a file.
